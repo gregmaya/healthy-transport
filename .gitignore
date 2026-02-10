@@ -205,3 +205,33 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Data files - Nørrebro MVP
+# Exclude all data files to prevent large files from being committed
+data/raw/
+data/processed/
+
+# GIS and geospatial files
+*.gpkg
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+*.geojson
+*.kml
+*.gdb/
+*.tif
+*.tiff
+
+# QGIS project files (optional - uncomment if you want to track these)
+# *.qgz
+# *.qgs
+
+# Large data formats
+*.csv
+*.parquet
+*.feather
+*.h5
+*.hdf5

@@ -164,9 +164,9 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 ## Phase 2: Data Processing & Integration
 
 ### 8. Define Nørrebro Boundary
-- [ ] Obtain official Nørrebro neighbourhood boundary
+- [x] Obtain official Nørrebro neighbourhood boundary
   - Source: Copenhagen Municipality administrative boundaries
-- [ ] Create `norrebro_boundary.gpkg`
+- [x] Create `norrebro_boundary.gpkg` in data/processed folder
 - [ ] Clip all datasets to boundary
 - [ ] **EXPLORE IN QGIS**: Verify all layers align within boundary
 
