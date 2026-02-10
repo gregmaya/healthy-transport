@@ -32,9 +32,11 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 ---
 
 ### 2. Road Network
-- [ ] Download road centre lines for Nørrebro
+- [x] Download road centre lines for Nørrebro
   - Source: Open Data Denmark (https://www.opendata.dk/)
-  - Alternative: OpenStreetMap or SDFI
+    - 'vejmidter' dataset is missing connectivity, so not suitable for routing
+    - stored as `raw/road_center_line/vejmidter.geojson`
+  - Alternative: OpenStreetMap or SDFI (to explore)
   - Required: road network with connectivity for routing
 - [ ] Process and save to `norrebro_roads.gpkg`
 - [ ] **EXPLORE IN QGIS**: Load road network layer
@@ -69,25 +71,16 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 ---
 
 ### 4. Population & Demographics
-- [ ] Download population data at most granular level
+- [x] Downloaded population data at most granular level : neighbourhood for the Nørrebro District
   - Source: Statistics Denmark (Danmarks Statistik) - https://www.dst.dk/
-  - Look for: 100m grid cells or building-level data
-  - Required attributes: total population, age groups, household size
-- [ ] Download demographic data
-  - Age distribution
-  - Household composition
-  - Socioeconomic indicators if available
-- [ ] Process and save to `norrebro_population.gpkg`
-- [ ] **EXPLORE IN QGIS**: Load population layer
-  - Check spatial distribution
-  - Verify demographic attributes
-  - Identify residential density patterns
-- [ ] Plan methodology for assigning population to buildings
+  - downloaded tables at the neighbourhood level (bydel) for the Nørrebro district:
+    - KKBEF8 (population by age)
+    - KKBOL2 (dwellings by type and household size)
+- [x] cleaned and saved to `norrebro_neighbourhoods_population.csv` and `norrebro_neighbourhoods_dwellings.csv`
+  - [x] Assigned additional neighbourhood id (`gm_id`) to match with manual neighbourhood boundary layer 
 
 **Notes**:
-- Danmarks Statistik provides gridded population data
-- May need to spatially join or disaggregate to building level
-
+- further joining is still pending.
 ---
 
 ### 5. Health Metrics (CRITICAL - Most Challenging)
@@ -167,6 +160,7 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - [x] Obtain official Nørrebro neighbourhood boundary
   - Source: Copenhagen Municipality administrative boundaries
 - [x] Create `norrebro_boundary.gpkg` in data/processed folder
+  - [x] Manually sliced of the Nørrebro district boundary to match with the granular population data (neighbourhood level)
 - [ ] Clip all datasets to boundary
 - [ ] **EXPLORE IN QGIS**: Verify all layers align within boundary
 
