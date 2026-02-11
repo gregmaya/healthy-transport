@@ -84,8 +84,18 @@ DAR_RAW_DIR = RAW_DATA_DIR / "dar"
 DAR_ADRESSEPUNKT_OUTPUT = DAR_RAW_DIR / "norrebro_dar_adressepunkt.gpkg"
 DAR_HUSNUMMER_OUTPUT = DAR_RAW_DIR / "norrebro_dar_husnummer.gpkg"
 
+# Building footprints configuration
+INSPIRE_BUILDINGS_FILE = DATA_DIR / "buildings" / "building_inspire.gpkg"
+BUILDING_FOOTPRINTS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_building_footprints.gpkg"
+
+# Pedestrian network configuration
+NETWORK_RAW_DIR = RAW_DATA_DIR / "network"
+PEDESTRIAN_NETWORK_GRAPHML = NETWORK_RAW_DIR / "norrebro_pedestrian_network.graphml"
+PEDESTRIAN_NETWORK_GPKG = PROCESSED_DATA_DIR / "norrebro_pedestrian_network.gpkg"
+
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)
 CYCLING_SPEED = 4.17  # m/s (15 km/h)
 MAX_WALK_DISTANCE = 800  # meters (10 min walk)
 MAX_CYCLE_DISTANCE = 5000  # meters (20 min cycle)
+NETWORK_BUFFER_M = MAX_WALK_DISTANCE  # buffer around boundary for network download

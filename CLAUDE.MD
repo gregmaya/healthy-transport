@@ -19,7 +19,6 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - [x] Create `norrebro_boundary.gpkg` in data/processed folder
   - [x] Manually sliced the Nørrebro district boundary to match with the granular population data (neighbourhood level)
   - 5 sub-neighbourhoods identified, each with a unique `gm_id`
-- [ ] **EXPLORE IN QGIS**: Verify all layers align within boundary
 
 **Notes**:
 
@@ -122,21 +121,33 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
     - 'vejmidter' dataset is missing connectivity, so not suitable for routing
     - Stored as `raw/road_center_line/vejmidter.geojson`
   - Required: road network with connectivity for routing
-- [ ] Download routable road network
-- [ ] Process and save to `norrebro_roads.gpkg`
-- [ ] **EXPLORE IN QGIS**: Load road network layer
-  - Check network connectivity
-  - Verify road classifications (primary, secondary, residential)
-  - Test for gaps or disconnections
+- [x] Download routable road network
+  - Source: OpenStreetMap via `osmnx.graph_from_polygon()` with `network_type='all'`
+  - GraphML: `data/raw/network/norrebro_pedestrian_network.graphml` (12 MB, WGS84 — for routing via NetworkX)
+  - GeoPackage: `data/processed/norrebro_pedestrian_network.gpkg` (5.0 MB, EPSG:25832 — for QGIS visualization)
+  - Script: `scripts/download_pedestrian_network.py`
+- [x] Process network data
+  - Walking travel times added at 1.4 m/s (5 km/h)
+  - Projected to EPSG:25832 for GeoPackage output
+  - Boundary buffered by 800m to capture edges near study area boundary
+- [ ] **EXPLORE IN QGIS**: Load pedestrian network GeoPackage
+  - Check nodes + edges layers for connectivity
+  - Verify highway type distribution (residential, footway, cycleway, etc.)
+  - Inspect buffer zone coverage beyond Nørrebro boundary
 - [ ] Document data quality and topology
 
-**Approach**: Use `osmnx.graph_from_polygon()` to download a routable network graph directly from OSM. This replaces the unusable vejmidter dataset and gives a proper topology for shortest path calculations.
+**Two Output Formats**:
+
+- **GraphML** (WGS84, in `data/raw/network/`): Preserves graph topology (node-edge connectivity). Required for routing algorithms (shortest path, isochrones) via `networkx` / `osmnx`. GeoPackage cannot represent graph topology.
+- **GeoPackage** (EPSG:25832, in `data/processed/`): Flat geometry layers (nodes as points, edges as lines) for QGIS visualization. Same data, different representation.
 
 **Notes**:
 
 - The vejmidter download confirmed that Open Data DK road data lacks connectivity
-- `osmnx` is already in requirements.txt and provides network analysis out of the box
-- Consider downloading slightly larger area than Nørrebro for proper network analysis at edges
+- `network_type='all'` downloads every road and path type (driving, walking, cycling). Filtering by mode is done downstream during analysis
+- Boundary buffered by 800m (`NETWORK_BUFFER_M` = `MAX_WALK_DISTANCE`) to capture network segments leading to facilities just outside Nørrebro
+- `truncate_by_edge=True` keeps full edges that cross the boundary polygon
+- Walking travel times pre-computed as `length / walking_speed` on each edge
 
 ---
 
@@ -286,11 +297,12 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 
 ### 11. Network Analysis Setup
 
-- [ ] Prepare road network for routing
-  - [ ] Build network topology
-  - [ ] Clean disconnected segments
+- [x] Prepare pedestrian network for routing
+  - [x] Build network topology (provided by osmnx graph)
+  - [x] Define walking impedance (travel time at 1.4 m/s)
+  - [ ] Clean disconnected segments (if needed after inspection)
 - [ ] Prepare cycling network for routing
-- [ ] Define impedance measures (distance, time)
+- [ ] Define cycling impedance measures
 
 ---
 
@@ -365,14 +377,15 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - **BBR building attributes downloaded**: 3,439 buildings via WFS API with comprehensive attributes
 - **DAR entrance points downloaded**: 11,911 address points via File Download API (5,639 accurate TD entrance doors)
 - Download script created: `scripts/download_bbr_dar.py` with credentials management and caching
+- **Pedestrian network downloaded**: OSM via osmnx, buffered 800m, with walking travel times (GraphML for routing + GeoPackage for QGIS)
+- Download script created: `scripts/download_pedestrian_network.py`
 
 ### Prioritised Next Steps
 
 1. **Spatial join BBR attributes to INSPIRE footprints** (unlock building-level analysis)
 2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
-3. Download routable road network via osmnx (replaces vejmidter)
-4. Begin health data research (longest lead time — start early)
-5. Download remaining layers: cycling, transport, green spaces (independent, any order)
+3. Begin health data research (longest lead time — start early)
+4. Download remaining layers: cycling, transport, green spaces (independent, any order)
 
 ---
 
@@ -400,3 +413,20 @@ This distinction is critical for accurate network analysis. A spatial join witho
 1. **BBR → INSPIRE footprints**: Spatial join (most BBR points fall within/near footprints)
 2. **DAR → Buildings**: Filter to TD/TK first, then spatial join for entrance locations
 3. **BBR ↔ DAR exact linking**: Requires national Husnummer file (~620 MB) via `husnummer` UUID — defer unless exact address matching is needed
+
+### Pedestrian Network (2026-02-11)
+
+#### Two Output Formats
+
+The network is saved in two formats because they serve fundamentally different purposes:
+
+- **GraphML** (`data/raw/network/`): A graph serialization format that preserves **topology** — which nodes connect to which edges, with weights (distance, travel time). This is what routing algorithms need. Libraries like `networkx` and `osmnx` load this directly for shortest-path, isochrone, and accessibility calculations.
+- **GeoPackage** (`data/processed/`): Flat geometry layers (points + lines) for **visualization** in QGIS. Same network data, but without graph topology. QGIS cannot open GraphML files.
+
+#### Design Decisions
+
+- **`network_type='all'`**: Downloads every OSM highway type (roads, footways, cycleways, paths). Mode-specific filtering is deferred to analysis time, keeping the raw download flexible for both walking and cycling analyses.
+- **800m buffer**: Network extends 800m beyond Nørrebro boundary (`NETWORK_BUFFER_M` = `MAX_WALK_DISTANCE`). This captures streets leading to facilities just outside the study area — without it, routing would dead-end at the boundary.
+- **Walking travel time**: Pre-computed on each edge as `length / 1.4 m/s` as a baseline. Uses constant speed rather than OSM `maxspeed` tags (which are for vehicles). Stored as `travel_time` attribute in seconds.
+- **TODO — Age-differentiated travel times**: The 1.4 m/s baseline is a population-average placeholder. During analysis, travel times should be recalculated per demographic group — older adults, children, and mobility-impaired populations walk at significantly different speeds. This directly affects accessibility results and health benefit estimates across age groups. At analysis time, recompute edge travel times using demographic-specific walking speeds rather than relying on the pre-computed values.
+- **`truncate_by_edge=True`**: Keeps complete edges that cross the boundary polygon, preventing artificial network breaks.
