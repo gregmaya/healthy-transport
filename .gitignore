@@ -209,8 +209,9 @@ __marimo__/
 
 # Data files - Nørrebro MVP
 # Exclude all data files to prevent large files from being committed
-data/raw/
-data/processed/
+data/*
+# excluding this 
+references/
 
 # GIS and geospatial files
 *.gpkg

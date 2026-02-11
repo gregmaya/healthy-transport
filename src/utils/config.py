@@ -1,6 +1,7 @@
 """
 Configuration and constants for the Nørrebro analysis project.
 """
+
 from pathlib import Path
 
 # Project directories
@@ -20,21 +21,18 @@ DATA_CATEGORIES = [
     "health",
     "transport",
     "greenspaces",
-    "boundary"
+    "boundary",
 ]
 
 # Coordinate Reference Systems
 CRS_DENMARK = "EPSG:25832"  # ETRS89 / UTM zone 32N (official Danish CRS)
-CRS_WGS84 = "EPSG:4326"     # WGS84 (lat/lon for web maps)
+CRS_WGS84 = "EPSG:4326"  # WGS84 (lat/lon for web maps)
 
-# Nørrebro bounding box (approximate, in EPSG:4326)
-# TODO: Replace with official boundary once downloaded
-NORREBRO_BBOX = {
-    "west": 12.53,
-    "south": 55.68,
-    "east": 12.57,
-    "north": 55.71
-}
+# Study area
+COPENHAGEN_MUNICIPALITY_CODE = "0101"
+NORREBRO_BOUNDARY_FILE = PROCESSED_DATA_DIR / "norrebro_boundary.gpkg"
+NORREBRO_BOUNDARY_LAYER = "norrebro_boundary"
+NORREBRO_NEIGHBOURHOODS_LAYER = "neighbourhoods"
 
 # File naming patterns
 RAW_FILE_PATTERN = "{source}_{dataset}_{date}.{ext}"
@@ -44,14 +42,47 @@ PROCESSED_FILE_PATTERN = "norrebro_{category}.{ext}"
 DEFAULT_GEO_FORMAT = "gpkg"  # GeoPackage
 DEFAULT_TABULAR_FORMAT = "csv"
 
-# Data sources
+# Data sources (general portals)
 DATA_SOURCES = {
     "sdfi": "https://dataforsyningen.dk/",
     "opendata_dk": "https://www.opendata.dk/",
     "dst": "https://www.dst.dk/",
     "osm": "https://www.openstreetmap.org/",
-    "kk": "https://data.kk.dk/"
+    "kk": "https://data.kk.dk/",
 }
+
+# Datafordeler API endpoints
+DATAFORDELER_WFS = {
+    "bbr": "https://wfs.datafordeler.dk/BBR/BBR_WFS/1.0.0/WFS",
+    "dagi": "https://wfs.datafordeler.dk/DAGIM/DAGI_10MULTIGEOM_GMLSFP/1.0.0/WFS",
+    "matriklen": "https://wfs.datafordeler.dk/MAT/MAT_WFS/1.0.0/WFS",
+}
+DATAFORDELER_FILE_DOWNLOAD_URL = "https://api.datafordeler.dk/FileDownloads/GetFile"
+
+# BBR (Bygnings- og Boligregistret) configuration
+BBR_LAYER = "bbr_v001:bygning_current"
+BBR_ID_COLUMNS = ["id_lokalId", "id.lokalId", "lokalId", "fid"]
+BBR_KEY_ATTRIBUTES = {
+    "use": "byg021BygningensAnvendelse",   # Building use/class code
+    "area": "byg038SamletBygningsareal",   # Total built area (m²)
+    "year": "byg026Opførelsesår",          # Construction year
+    "municipality": "kommunekode",         # Municipality code
+    "floors": "byg054AntalEtager",         # Number of floors
+    "residential_area": "byg039BygningensSamledeBoligAreal",  # Residential area (m²)
+    "commercial_area": "byg040BygningensSamledeErhvervsAreal",  # Commercial area (m²)
+    "footprint_area": "byg041BebyggetAreal",  # Built footprint area (m²)
+}
+BBR_RAW_DIR = RAW_DATA_DIR / "bbr"
+BBR_OUTPUT_FILE = BBR_RAW_DIR / "norrebro_bbr_buildings.gpkg"
+
+# DAR (Danmarks Adresseregister) configuration
+DAR_ENTITIES = {
+    "husnummer": "Husnummer",        # House numbers (links to buildings)
+    "adressepunkt": "Adressepunkt",  # Address/entrance point coordinates
+}
+DAR_RAW_DIR = RAW_DATA_DIR / "dar"
+DAR_ADRESSEPUNKT_OUTPUT = DAR_RAW_DIR / "norrebro_dar_adressepunkt.gpkg"
+DAR_HUSNUMMER_OUTPUT = DAR_RAW_DIR / "norrebro_dar_husnummer.gpkg"
 
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)
