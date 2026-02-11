@@ -93,6 +93,20 @@ NETWORK_RAW_DIR = RAW_DATA_DIR / "network"
 PEDESTRIAN_NETWORK_GRAPHML = NETWORK_RAW_DIR / "norrebro_pedestrian_network.graphml"
 PEDESTRIAN_NETWORK_GPKG = PROCESSED_DATA_DIR / "norrebro_pedestrian_network.gpkg"
 
+# Public transport configuration
+TRANSPORT_RAW_DIR = RAW_DATA_DIR / "transport"
+GTFS_ZIP_FILE = TRANSPORT_RAW_DIR / "rejseplanen_gtfs.zip"
+GTFS_DOWNLOAD_URL = "https://www.rejseplanen.info/labs/GTFS.zip"
+TRANSPORT_STOPS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_transport_stops.gpkg"
+TRANSPORT_BUFFER_M = 10_000  # 10 km buffer for transport stop coverage
+
+# GTFS route type mapping
+GTFS_ROUTE_TYPES = {
+    "bus": [3, *range(700, 800)],
+    "metro": [1, *range(400, 500)],
+    "train": [2, *range(100, 200)],
+}
+
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)
 CYCLING_SPEED = 4.17  # m/s (15 km/h)

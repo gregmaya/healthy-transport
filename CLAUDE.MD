@@ -176,26 +176,43 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 
 ### 6. Public Transport Stops
 
-- [ ] Download bus stops for Nørrebro area
-  - Source: Movia (public transport authority) or Open Data DK
-  - Alternative: OpenStreetMap (public_transport=stop)
-- [ ] Download metro stations
-  - Copenhagen Metro data
-- [ ] Download train/S-train stations
-  - DSB or national rail data
-- [ ] Process and save to `norrebro_transport.gpkg`
-- [ ] **EXPLORE IN QGIS**: Load transport stops
-  - Verify stop locations
-  - Check attribute data (routes, frequency if available)
-  - Calculate accessibility coverage
-- [ ] Document public transport coverage
+- [x] Download national GTFS feed
+  - Source: Rejseplanen Labs (`https://www.rejseplanen.info/labs/GTFS.zip`)
+  - File: `data/raw/transport/rejseplanen_gtfs.zip` (48.6 MB)
+  - Script: `scripts/download_gtfs.py`
+  - Contains all Danish public transport: buses (Movia), metro, trains (DSB/S-tog)
+  - No authentication needed for download (free access via Rejseplanen Labs)
+- [x] Process stops and routes, classify by mode, clip to 10 km buffer
+  - Script: `scripts/process_transport_stops.py`
+  - Output: `data/processed/norrebro_transport_stops.gpkg` (1.5 MB, EPSG:25832)
+    - Layer `stops`: 2,687 features (2,581 bus, 62 train, 44 metro) — one row per (stop, mode) pair
+    - Layer `routes`: 181 features (148 bus, 25 train, 8 metro) — actual GPS traces from GTFS `shapes.txt`
+- [ ] **EXPLORE IN QGIS**: Load transport stops GeoPackage
+  - Style stops by `transport_mode` (bus/metro/train)
+  - Verify route line geometries follow actual roads (from shapes.txt)
+  - Check coverage within and around Nørrebro (10 km buffer)
+  - Inspect multi-mode stations (stops with duplicate geometries across modes)
 
-**Approach**: Try Rejseplanen GTFS feed for comprehensive stop data with route info. Alternatively, OSM via `tags={'public_transport': 'stop_position'}` or `{'highway': 'bus_stop'}`.
+**Data Architecture**:
+
+- **Raw**: GTFS zip saved as-is in `data/raw/transport/` — no modifications
+- **Processed**: Two-layer GeoPackage in EPSG:25832
+  - `stops`: One row per (stop, transport_mode). A station served by bus + metro has two rows with same geometry, different `transport_mode` values. Attributes: `stop_id`, `stop_name`, `transport_mode`
+  - `routes`: One row per (route, direction). Geometries from `shapes.txt` (GPS traces along roads), not schematic stop-to-stop lines. Attributes: `route_id`, `route_short_name`, `transport_mode`, `direction_id`
+
+**Processing Details**:
+
+- Early spatial filtering: stops filtered to 10 km buffered boundary before joining with stop_times (reduces 3.97M → 1.82M rows, 54% reduction)
+- Mode classification via GTFS `route_type`: bus=3, metro=1, train=2 (+ extended types)
+- Parent/child station handling: child stops rolled up to parent stations to avoid platform-level duplicates
+- Route directionality: each route gets one line per direction (direction_id 0 and 1) since A→B→C may follow different roads than C→B→A
+- 734 shape geometries (out of 6,860 nationally) intersect the 10 km buffer
 
 **Notes**:
 
-- Rejseplanen API may have comprehensive stop data
-- Include stop names and route information
+- GTFS feed covers all of Denmark (36,800 stops, 1,522 routes)
+- 10 km buffer (`TRANSPORT_BUFFER_M`) captures regional transit context — much larger than the 800m pedestrian network buffer
+- Shapes from `shapes.txt` provide real road-following geometries, not straight lines between stops
 
 ---
 
@@ -379,13 +396,15 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - Download script created: `scripts/download_bbr_dar.py` with credentials management and caching
 - **Pedestrian network downloaded**: OSM via osmnx, buffered 800m, with walking travel times (GraphML for routing + GeoPackage for QGIS)
 - Download script created: `scripts/download_pedestrian_network.py`
+- **Public transport stops & routes downloaded**: Rejseplanen GTFS feed, 10 km buffer, 2,687 stops + 181 route lines with GPS traces from shapes.txt
+- Scripts created: `scripts/download_gtfs.py` + `scripts/process_transport_stops.py`
 
 ### Prioritised Next Steps
 
 1. **Spatial join BBR attributes to INSPIRE footprints** (unlock building-level analysis)
 2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
 3. Begin health data research (longest lead time — start early)
-4. Download remaining layers: cycling, transport, green spaces (independent, any order)
+4. Download remaining layers: cycling, green spaces (independent, any order)
 
 ---
 
@@ -430,3 +449,32 @@ The network is saved in two formats because they serve fundamentally different p
 - **Walking travel time**: Pre-computed on each edge as `length / 1.4 m/s` as a baseline. Uses constant speed rather than OSM `maxspeed` tags (which are for vehicles). Stored as `travel_time` attribute in seconds.
 - **TODO — Age-differentiated travel times**: The 1.4 m/s baseline is a population-average placeholder. During analysis, travel times should be recalculated per demographic group — older adults, children, and mobility-impaired populations walk at significantly different speeds. This directly affects accessibility results and health benefit estimates across age groups. At analysis time, recompute edge travel times using demographic-specific walking speeds rather than relying on the pre-computed values.
 - **`truncate_by_edge=True`**: Keeps complete edges that cross the boundary polygon, preventing artificial network breaks.
+
+### Public Transport Data (2026-02-11)
+
+#### Data Source: Rejseplanen GTFS
+
+All Danish public transport is in a single GTFS feed from Rejseplanen Labs. No separate downloads per operator — Movia (buses), Metroselskabet (metro), and DSB (trains/S-tog) are all included. The zip is ~49 MB covering 36,800 stops and 1,522 routes nationally.
+
+#### Key Design: shapes.txt for Route Geometries
+
+GTFS provides two ways to represent route paths:
+- **`shapes.txt`** (what we use): Actual GPS traces along roads — high-resolution polylines that follow the real route path. 3.48M shape points nationally.
+- **Stop-to-stop lines** (rejected): Straight lines connecting consecutive stops. These are schematic and don't follow actual roads. Misleading on a map.
+
+#### GTFS Structure for Mode Classification
+
+Stops don't have a mode attribute directly. The join chain is:
+`routes.txt` (has `route_type`) → `trips.txt` → `stop_times.txt` → `stops.txt`
+
+Route types: bus=3, metro=1, train=2. Extended GTFS types (100-199, 400-499, 700-799) are also handled.
+
+#### Early Filtering Strategy
+
+The national GTFS is large (3.97M stop_times rows). Processing order:
+1. Filter stops spatially first (36,800 → 2,677 in 10 km buffer)
+2. Filter stop_times to matching stop_ids (54% reduction)
+3. Filter shapes to those intersecting buffer (6,860 → 734)
+4. Only then do the joins
+
+This avoids loading and joining the full national dataset.
