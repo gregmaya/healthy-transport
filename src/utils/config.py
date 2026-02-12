@@ -110,6 +110,15 @@ KK_CYCLING_LAYERS = {
 CYCLING_RAW_DIR = RAW_DATA_DIR / "cycling"
 CYCLING_OUTPUT = PROCESSED_DATA_DIR / "norrebro_cycling.gpkg"
 
+# Green spaces configuration (Copenhagen Municipality WFS)
+KK_GREENSPACE_LAYERS = {
+    "parkregister": "k101:parkregister",
+    "park_groent_omr_oversigtskort": "k101:park_groent_omr_oversigtskort",
+    "legeplads": "k101:legeplads",
+}
+GREENSPACES_RAW_DIR = RAW_DATA_DIR / "greenspaces"
+GREENSPACES_OUTPUT = PROCESSED_DATA_DIR / "norrebro_greenspaces.gpkg"
+
 # GTFS route type mapping
 GTFS_ROUTE_TYPES = {
     "bus": [3, *range(700, 800)],

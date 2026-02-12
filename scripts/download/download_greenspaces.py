@@ -1,21 +1,21 @@
 """
-Download Copenhagen cycling infrastructure from Copenhagen Municipality WFS.
+Download Copenhagen green spaces and parks from Copenhagen Municipality WFS.
 
 Downloads three citywide layers (no clipping):
-- cykelsti: Physical cycle paths with type classification and width
-- cykeldata: Broader cycling network (paths, supercykelstier, green routes, etc.)
-- cykelstativ: Bike parking points with capacity
+- parkregister: Official park registry with rich attributes (type, area, visits, catchment)
+- park_groent_omr_oversigtskort: Overview map of green areas
+- legeplads: Playgrounds with type and age group classification
 
 Source: Copenhagen Municipality WFS (https://wfs-kbhkort.kk.dk/k101/ows)
 No authentication required.
 
 Outputs:
-    data/raw/cycling/kk_cykelsti.gpkg
-    data/raw/cycling/kk_cykeldata.gpkg
-    data/raw/cycling/kk_cykelstativ.gpkg
+    data/raw/greenspaces/kk_parkregister.gpkg
+    data/raw/greenspaces/kk_park_groent_omr_oversigtskort.gpkg
+    data/raw/greenspaces/kk_legeplads.gpkg
 
 Usage:
-    python scripts/download_cycling.py
+    python scripts/download/download_greenspaces.py
 """
 
 import logging
@@ -32,8 +32,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from utils.config import (
     CRS_DENMARK,
-    CYCLING_RAW_DIR,
-    KK_CYCLING_LAYERS,
+    GREENSPACES_RAW_DIR,
+    KK_GREENSPACE_LAYERS,
     KK_WFS_URL,
 )
 
@@ -85,12 +85,12 @@ def log_distribution(gdf: gpd.GeoDataFrame, column: str, label: str):
 
 def main():
     logger.info("=" * 60)
-    logger.info("COPENHAGEN CYCLING INFRASTRUCTURE DOWNLOAD")
+    logger.info("COPENHAGEN GREEN SPACES DOWNLOAD")
     logger.info("=" * 60)
 
-    CYCLING_RAW_DIR.mkdir(parents=True, exist_ok=True)
+    GREENSPACES_RAW_DIR.mkdir(parents=True, exist_ok=True)
 
-    for layer_name, type_name in KK_CYCLING_LAYERS.items():
+    for layer_name, type_name in KK_GREENSPACE_LAYERS.items():
         logger.info("-" * 60)
 
         gdf = download_wfs_layer(layer_name, type_name)
@@ -103,14 +103,18 @@ def main():
         gdf = gdf.to_crs(CRS_DENMARK)
         logger.info("  Reprojected to %s", CRS_DENMARK)
 
-        # Log type distributions
-        if layer_name == "cykelsti":
-            log_distribution(gdf, "beskrivelse", "sti_type")
-        elif layer_name == "cykeldata":
-            log_distribution(gdf, "kategori", "kategori")
+        # Log key attribute distributions
+        if layer_name == "parkregister":
+            log_distribution(gdf, "parktype", "Park type")
+            log_distribution(gdf, "bydelsnavn", "District")
+        elif layer_name == "park_groent_omr_oversigtskort":
+            log_distribution(gdf, "objekt_type", "Object type")
+        elif layer_name == "legeplads":
+            log_distribution(gdf, "legeplads_type", "Playground type")
+            log_distribution(gdf, "aldersgruppe", "Age group")
 
         # Save
-        output_path = CYCLING_RAW_DIR / f"kk_{layer_name}.gpkg"
+        output_path = GREENSPACES_RAW_DIR / f"kk_{layer_name}.gpkg"
         gdf.to_file(output_path, driver="GPKG")
         size_mb = output_path.stat().st_size / (1024 * 1024)
         logger.info("  Saved: %s (%.1f MB, %d features)", output_path, size_mb, len(gdf))
@@ -119,8 +123,8 @@ def main():
     logger.info("=" * 60)
     logger.info("DOWNLOAD COMPLETE")
     logger.info("=" * 60)
-    for layer_name in KK_CYCLING_LAYERS:
-        path = CYCLING_RAW_DIR / f"kk_{layer_name}.gpkg"
+    for layer_name in KK_GREENSPACE_LAYERS:
+        path = GREENSPACES_RAW_DIR / f"kk_{layer_name}.gpkg"
         if path.exists():
             size_mb = path.stat().st_size / (1024 * 1024)
             logger.info("  %s (%.1f MB)", path, size_mb)

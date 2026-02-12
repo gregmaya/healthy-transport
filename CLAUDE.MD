@@ -237,26 +237,70 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 
 ---
 
-### 7. Parks & Open Spaces
+### 7. Parks & Green Spaces
 
-- [ ] Download parks and green spaces
-  - Source: OpenStreetMap (leisure=park, landuse=grass, etc.)
-  - Alternative: Copenhagen Municipality open space data
-  - Include: parks, squares, playgrounds, urban forests
-- [ ] Download recreational facilities if available
-- [ ] Process and save to `norrebro_greenspaces.gpkg`
-- [ ] **EXPLORE IN QGIS**: Load green spaces layer
-  - Check coverage and classification
-  - Verify accessibility
-  - Identify different types of green spaces
+- [x] Download parks and green spaces
+  - Source: Copenhagen Municipality WFS (`https://wfs-kbhkort.kk.dk/k101/ows`) — same WFS as cycling data
+  - Script: `scripts/download/download_greenspaces.py`
+  - Three raw datasets downloaded (citywide, EPSG:25832):
+    - `data/raw/greenspaces/kk_parkregister.gpkg` (361 features, 1.2 MB) — official park registry with polygons
+    - `data/raw/greenspaces/kk_park_groent_omr_oversigtskort.gpkg` (1,448 features, 1.1 MB) — green areas overview polygons
+    - `data/raw/greenspaces/kk_legeplads.gpkg` (135 features, 0.2 MB) — playground points
+- [x] Download AS IS without filtering to explore in QGIS first
+- [x] Process into analysis-ready GeoPackage
+  - Script: `scripts/process/process_greenspaces.py`
+  - Output: `data/processed/norrebro_greenspaces.gpkg` (0.3 MB)
+    - Layer `parks`: 77 park polygons (clipped to 800m buffer around Nørrebro)
+    - Layer `playgrounds`: 34 playground points (clipped to 800m buffer around Nørrebro)
+  - All column names translated from Danish to English (e.g. `parktype` → `park_type`, `bydelsnavn` → `district`, `besoegstal` → `visitor_count`, `opland_300` → `catchment_pop_300m`)
+- [ ] **EXPLORE IN QGIS**: Load processed green spaces GeoPackage
+  - Style parks by `park_type` (Lokale parker, Regionale parker, Naturområder, Idrætsanlæg, etc.)
+  - Filter to Nørrebro: `"district" = 'Nørrebro'`
+  - Check playground locations relative to parks
+  - Verify catchment area attributes (`catchment_pop_300m`, `catchment_pop_875m`)
+  - Assess completeness — any obvious missing parks?
 - [ ] Document green space availability
 
-**Approach**: OSM via `osmnx.features_from_polygon()` with `tags={'leisure': 'park', 'landuse': ['grass', 'recreation_ground'], 'leisure': ['playground', 'garden']}`. Check data.kk.dk for official municipal green space layers.
+**parkregister — Official Park Registry** (PRIMARY for health analysis):
 
-**Notes**:
+- **361 park polygons** citywide, **33 in Nørrebro** (`bydelsnavn = 'Nørrebro'`)
+- Key attributes:
+  - `parktype`: Park type classification (see distribution below)
+  - `navn_parker`: Park name
+  - `bydelsnavn`: District name
+  - `areal`: Area in m²
+  - `besoegstal`: Annual visitor count
+  - `opland_300` / `opland_875`: Catchment population at 300m and 875m walk distances
+  - `ejerforhold` / `ejer`: Ownership
+  - `fredning`: Protection status
+  - `beskrivelse`: Description
+- Park type distribution (citywide):
 
-- Quality vs. quantity - consider park amenities
-- Small pocket parks vs. large parks
+| parktype | Count | Description |
+|---|---|---|
+| Andet grønt område | 171 | Other green areas |
+| Lokale parker | 71 | Local/neighbourhood parks |
+| Vandflader | 27 | Water surfaces |
+| Regionale parker | 24 | Regional parks |
+| Naturområder | 20 | Nature areas |
+| Idrætsanlæg | 17 | Sports facilities |
+| Kirkegårde | 12 | Cemeteries |
+| Planlagte grønne områder | 12 | Planned green areas |
+| Haveanlæg | 7 | Garden facilities |
+
+**park_groent_omr_oversigtskort — Green Areas Overview**:
+
+- **1,448 polygon features** citywide, all classified as `objekt_type = 'Park'`
+- Broader coverage than parkregister — likely includes smaller green patches
+- Simpler attributes: `objekt_type`, `kommune`
+
+**legeplads — Playgrounds**:
+
+- **135 point features** citywide (108 regular + 27 staffed/"Bemandet")
+- Attributes: `navn`, `bydel`, `legeplads_type`, `aldersgruppe` (target age group)
+- Various age ranges: 0-16, 3-10, 0-14, 0-8, etc.
+
+**Data Source**: Copenhagen Municipality WFS at `wfs-kbhkort.kk.dk/k101/ows` — no authentication required. Also available: `k101:park_groent_omr_omegn` (surrounding areas), `k101:gadetraer` (street trees) if needed later.
 
 ---
 
@@ -422,13 +466,16 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 - **Cycling infrastructure downloaded & processed**: Copenhagen Municipality WFS (3 raw datasets), processed into `norrebro_cycling.gpkg` with `cykeldata` (3,638 citywide) + `cykelstativ` (1,664 clipped to 800m)
 - Scripts created: `scripts/download/download_cycling.py` + `scripts/process/process_cycling.py`
 - **Scripts reorganized**: `scripts/download/` (raw data fetching) and `scripts/process/` (raw → processed)
+- **Green spaces downloaded & processed**: Copenhagen Municipality WFS (3 raw datasets), processed into `norrebro_greenspaces.gpkg` with `parks` (77 polygons clipped to 800m) + `playgrounds` (34 points clipped to 800m). Column names translated to English.
+- Scripts created: `scripts/download/download_greenspaces.py` + `scripts/process/process_greenspaces.py`
+- **PROJECT_ROOT bug fixed**: All scripts in `scripts/download/` and `scripts/process/` updated from `.parent.parent` to `.parent.parent.parent` after directory reorganization
 
 ### Prioritised Next Steps
 
 1. **Spatial join BBR attributes to INSPIRE footprints** (unlock building-level analysis)
 2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
 3. Begin health data research (longest lead time — start early)
-4. Download remaining layers: green spaces
+4. **EXPLORE IN QGIS**: green spaces layers (parks, playgrounds)
 
 ---
 
