@@ -253,13 +253,13 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
     - Layer `parks`: 77 park polygons (clipped to 800m buffer around Nørrebro)
     - Layer `playgrounds`: 34 playground points (clipped to 800m buffer around Nørrebro)
   - All column names translated from Danish to English (e.g. `parktype` → `park_type`, `bydelsnavn` → `district`, `besoegstal` → `visitor_count`, `opland_300` → `catchment_pop_300m`)
-- [ ] **EXPLORE IN QGIS**: Load processed green spaces GeoPackage
+- [x] **EXPLORE IN QGIS**: Load processed green spaces GeoPackage
   - Style parks by `park_type` (Lokale parker, Regionale parker, Naturområder, Idrætsanlæg, etc.)
   - Filter to Nørrebro: `"district" = 'Nørrebro'`
   - Check playground locations relative to parks
   - Verify catchment area attributes (`catchment_pop_300m`, `catchment_pop_875m`)
   - Assess completeness — any obvious missing parks?
-- [ ] Document green space availability
+
 
 **parkregister — Official Park Registry** (PRIMARY for health analysis):
 
@@ -303,6 +303,23 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 **Data Source**: Copenhagen Municipality WFS at `wfs-kbhkort.kk.dk/k101/ows` — no authentication required. Also available: `k101:park_groent_omr_omegn` (surrounding areas), `k101:gadetraer` (street trees) if needed later.
 
 ---
+### BONUS: Translation
+
+- [x] created a `translate_process.py` script to handle all Danish → English field name translations in one place for consistency across datasets
+- [x] Translate key attribute fields from Danish to English during processing - E.g. `parktype` → `park_type`, `bydelsnavn` → `district`, `besoegstal` → `visitor_count` 
+- [x] Document original Danish field names and translations in code comments and documentation for clarity
+
+ **Notes**: 
+ - Translation done in processing scripts (e.g. `process_greenspaces.py`) to maintain original raw data with Danish field names 
+ - Key for readability and consistency across datasets during analysis 
+ 
+ All further pipelines should follow the sequence of:
+1. Getting the raw data as is
+2. First storing it
+3. Then in a second stage creating a process script that does any clipping necessary, all of the translation, and then combining similar data sets into different layers of the same GeoPackage(e.g. all green space datasets into `norrebro_greenspaces.gpkg` with layers for parks, playgrounds, etc.)    
+
+ ---
+
 
 ### 8. Health Metrics (CRITICAL - Most Challenging)
 
@@ -321,6 +338,7 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
   - Diabetes, respiratory diseases
   - Mental health indicators if available
   - Health risk factors (obesity, physical inactivity)
+- [ ] Store as is (RAW) first.
 - [ ] Process and save to `norrebro_health.gpkg` or CSV with geographic identifiers
 - [ ] **EXPLORE IN QGIS**: Load health data layer
   - Check geographic resolution
