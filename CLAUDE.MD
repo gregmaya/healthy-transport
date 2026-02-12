@@ -56,11 +56,11 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - [x] Download BBR building attributes
   - Source: Datafordeleren BBR WFS API
   - File: `data/raw/bbr/norrebro_bbr_buildings.gpkg` (3,439 buildings, 2.0 MB)
-  - Script: `scripts/download_bbr_dar.py`
+  - Script: `scripts/download/download_bbr_dar.py`
 - [x] Download DAR building entrance points
   - Source: Datafordeleren DAR File Download API
   - File: `data/raw/dar/norrebro_dar_adressepunkt.gpkg` (11,911 access points, 4.8 MB)
-  - Script: `scripts/download_bbr_dar.py`
+  - Script: `scripts/download/download_bbr_dar.py`
 - [ ] Spatial join BBR attributes to INSPIRE footprints
 - [ ] **EXPLORE IN QGIS**: Open all building layers, verify alignment
   - BBR points should fall within/near INSPIRE footprints
@@ -125,7 +125,7 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
   - Source: OpenStreetMap via `osmnx.graph_from_polygon()` with `network_type='all'`
   - GraphML: `data/raw/network/norrebro_pedestrian_network.graphml` (12 MB, WGS84 — for routing via NetworkX)
   - GeoPackage: `data/processed/norrebro_pedestrian_network.gpkg` (5.0 MB, EPSG:25832 — for QGIS visualization)
-  - Script: `scripts/download_pedestrian_network.py`
+  - Script: `scripts/download/download_pedestrian_network.py`
 - [x] Process network data
   - Walking travel times added at 1.4 m/s (5 km/h)
   - Projected to EPSG:25832 for GeoPackage output
@@ -153,24 +153,45 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 
 ### 5. Cycling Infrastructure
 
-- [ ] Download cycle paths (separate cycling infrastructure)
-  - Source: Open Data Denmark / Geodata-info.dk
-  - Alternative: OpenStreetMap (cycleway tags)
-- [ ] Download cycle routes (on-road cycling routes)
-  - Look for designated cycle route networks
-- [ ] Process and save to `norrebro_cycling.gpkg`
+- [x] Download cycling infrastructure for Copenhagen
+  - Source: Copenhagen Municipality WFS (`https://wfs-kbhkort.kk.dk/k101/ows`) — free, no authentication
+  - Script: `scripts/download/download_cycling.py`
+  - Three raw datasets downloaded (citywide, EPSG:25832):
+    - `data/raw/cycling/kk_cykelsti.gpkg` (1,911 features, 0.8 MB) — physical cycle paths with type + width
+    - `data/raw/cycling/kk_cykeldata.gpkg` (3,638 features, 1.3 MB) — broader cycling network
+    - `data/raw/cycling/kk_cykelstativ.gpkg` (7,012 features, 2.0 MB) — bike parking with capacity
+- [x] Process into analysis-ready GeoPackage
+  - Script: `scripts/process/process_cycling.py`
+  - Output: `data/processed/norrebro_cycling.gpkg` (3.0 MB)
+    - Layer `cykeldata`: 3,638 cycling network lines (citywide, no clipping)
+    - Layer `cykelstativ`: 1,664 bike parking points (clipped to 800m buffer around Nørrebro)
 - [ ] **EXPLORE IN QGIS**: Load cycling layers
-  - Distinguish between protected cycle paths and shared roads
-  - Check density and connectivity
-  - Identify gaps in cycling network
+  - Style by `kategori` (Cykelsti, Supercykelsti, Grøn, Cykelmulighed, Cykelrute)
+  - Check density and connectivity around Nørrebro
+  - Verify bike parking coverage within 800m buffer
 - [ ] Document cycling infrastructure coverage
 
-**Approach**: OSM via `osmnx.features_from_polygon()` with `tags={'cycleway': True, 'highway': 'cycleway'}`. Also check Copenhagen Municipality data at data.kk.dk for official cycling infrastructure layers.
+**Dataset Choice: `cykeldata` over `cykelsti`**:
 
-**Notes**:
+The `cykelsti` layer maps each side of a street separately (two lines per street where cycle lanes exist on both sides), which creates duplicates in proximity/counting analysis. The `cykeldata` layer represents one line per street with a cycling facility, with a `kategori` field to distinguish infrastructure types. This is cleaner for measuring distance from building entrances to cycling infrastructure.
 
-- City of Copenhagen has comprehensive cycling data
-- May need to combine multiple datasets
+**`cykeldata` Categories**:
+
+| kategori | Count | Description |
+|---|---|---|
+| Cykelsti | 2,361 | Dedicated cycle paths |
+| Cykelmulighed | 663 | Roads suitable for cycling (less protected) |
+| Grøn | 307 | Green cycle routes through parks |
+| Supercykelsti | 182 | Super cycle highways (premium commuter routes) |
+| Cykelrute | 117 | Designated cycle routes |
+| Other | 8 | Cykelgade, Lokal forbindelse |
+
+**`cykelstativ` (Bike Parking)**:
+
+- 7,012 points citywide, 1,664 within 800m of Nørrebro
+- Attributes: capacity, type, owner, condition
+
+**Data Source**: Copenhagen Municipality WFS at `wfs-kbhkort.kk.dk/k101/ows`. Also has `k101:blaa_cykelfelt` (324 blue-painted cycle crossings) if needed later.
 
 ---
 
@@ -179,11 +200,11 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - [x] Download national GTFS feed
   - Source: Rejseplanen Labs (`https://www.rejseplanen.info/labs/GTFS.zip`)
   - File: `data/raw/transport/rejseplanen_gtfs.zip` (48.6 MB)
-  - Script: `scripts/download_gtfs.py`
+  - Script: `scripts/download/download_gtfs.py`
   - Contains all Danish public transport: buses (Movia), metro, trains (DSB/S-tog)
   - No authentication needed for download (free access via Rejseplanen Labs)
 - [x] Process stops and routes, classify by mode, clip to 10 km buffer
-  - Script: `scripts/process_transport_stops.py`
+  - Script: `scripts/process/process_transport_stops.py`
   - Output: `data/processed/norrebro_transport_stops.gpkg` (1.5 MB, EPSG:25832)
     - Layer `stops`: 2,687 features (2,581 bus, 62 train, 44 metro) — one row per (stop, mode) pair
     - Layer `routes`: 181 features (148 bus, 25 train, 8 metro) — actual GPS traces from GTFS `shapes.txt`
@@ -383,7 +404,7 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 ## Progress Tracking
 
 **Current Phase**: Phase 1 - Data Collection (partially complete)
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-02-12
 
 ### Completed
 
@@ -393,18 +414,21 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
 - **Building footprints downloaded**: INSPIRE dataset manually acquired, clipped to Nørrebro
 - **BBR building attributes downloaded**: 3,439 buildings via WFS API with comprehensive attributes
 - **DAR entrance points downloaded**: 11,911 address points via File Download API (5,639 accurate TD entrance doors)
-- Download script created: `scripts/download_bbr_dar.py` with credentials management and caching
+- Download script created: `scripts/download/download_bbr_dar.py` with credentials management and caching
 - **Pedestrian network downloaded**: OSM via osmnx, buffered 800m, with walking travel times (GraphML for routing + GeoPackage for QGIS)
-- Download script created: `scripts/download_pedestrian_network.py`
+- Download script created: `scripts/download/download_pedestrian_network.py`
 - **Public transport stops & routes downloaded**: Rejseplanen GTFS feed, 10 km buffer, 2,687 stops + 181 route lines with GPS traces from shapes.txt
-- Scripts created: `scripts/download_gtfs.py` + `scripts/process_transport_stops.py`
+- Scripts created: `scripts/download/download_gtfs.py` + `scripts/process/process_transport_stops.py`
+- **Cycling infrastructure downloaded & processed**: Copenhagen Municipality WFS (3 raw datasets), processed into `norrebro_cycling.gpkg` with `cykeldata` (3,638 citywide) + `cykelstativ` (1,664 clipped to 800m)
+- Scripts created: `scripts/download/download_cycling.py` + `scripts/process/process_cycling.py`
+- **Scripts reorganized**: `scripts/download/` (raw data fetching) and `scripts/process/` (raw → processed)
 
 ### Prioritised Next Steps
 
 1. **Spatial join BBR attributes to INSPIRE footprints** (unlock building-level analysis)
 2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
 3. Begin health data research (longest lead time — start early)
-4. Download remaining layers: cycling, green spaces (independent, any order)
+4. Download remaining layers: green spaces
 
 ---
 

@@ -100,6 +100,16 @@ GTFS_DOWNLOAD_URL = "https://www.rejseplanen.info/labs/GTFS.zip"
 TRANSPORT_STOPS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_transport_stops.gpkg"
 TRANSPORT_BUFFER_M = 10_000  # 10 km buffer for transport stop coverage
 
+# Cycling infrastructure configuration (Copenhagen Municipality WFS)
+KK_WFS_URL = "https://wfs-kbhkort.kk.dk/k101/ows"
+KK_CYCLING_LAYERS = {
+    "cykelsti": "k101:cykelsti",
+    "cykeldata": "k101:cykeldata",
+    "cykelstativ": "k101:cykelstativ",
+}
+CYCLING_RAW_DIR = RAW_DATA_DIR / "cycling"
+CYCLING_OUTPUT = PROCESSED_DATA_DIR / "norrebro_cycling.gpkg"
+
 # GTFS route type mapping
 GTFS_ROUTE_TYPES = {
     "bus": [3, *range(700, 800)],
