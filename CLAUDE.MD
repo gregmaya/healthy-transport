@@ -61,11 +61,22 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
   - Source: Datafordeleren DAR File Download API
   - File: `data/raw/dar/norrebro_dar_adressepunkt.gpkg` (11,911 access points, 4.8 MB)
   - Script: `scripts/download/download_bbr_dar.py`
-- [ ] Spatial join BBR attributes to INSPIRE footprints
-- [ ] **EXPLORE IN QGIS**: Open all building layers, verify alignment
-  - BBR points should fall within/near INSPIRE footprints
-  - DAR entrance points should be at building doors (TD) or roads (V0)
-  - Verify land use distribution (140 = multi-dwelling residential dominates)
+- [x] Process BBR + DAR into analysis-ready GeoPackage
+  - Script: `scripts/process/process_buildings.py`
+  - Output: `data/processed/norrebro_buildings.gpkg` (1.7 MB, EPSG:25832)
+    - Layer `buildings`: 3,439 BBR building points — 14 translated columns + 4 derived (`use_description`, `use_category`, `construction_era`, English material/heating labels)
+    - Layer `entrances`: 5,643 DAR entrance points (TD/TK only, 800m buffer)
+  - All ~80 BBR use codes mapped to English descriptions per official BBR documentation (https://teknik.bbr.dk/kodelister)
+  - Wall material, roof material, and heating type numeric codes mapped to English
+  - Construction years grouped into 7 historical eras (Before 1850 → After 2000)
+- [x] Explored BBR↔DAR linking strategies (notebook `02b_buildings_processed.ipynb`)
+  - Spatial join via INSPIRE footprints is the recommended primary approach
+  - UUID linking (husnummer_id → Husnummer entity → DAR) deferred — requires 620 MB download
+- [ ] Spatial join BBR attributes to INSPIRE footprints (full integration — Phase 2)
+- [x] **EXPLORE IN QGIS**: Opened all building layers, verified alignment
+  - BBR points fall within/near INSPIRE footprints ✓
+  - DAR entrance points (TD) are at building doors ✓
+  - Land use distribution confirmed (140 = apartment building dominates with 1,600+)
 
 **BBR (Bygnings- og Boligregistret) — Building Attributes**:
 
@@ -130,10 +141,10 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
   - Walking travel times added at 1.4 m/s (5 km/h)
   - Projected to EPSG:25832 for GeoPackage output
   - Boundary buffered by 800m to capture edges near study area boundary
-- [ ] **EXPLORE IN QGIS**: Load pedestrian network GeoPackage
-  - Check nodes + edges layers for connectivity
-  - Verify highway type distribution (residential, footway, cycleway, etc.)
-  - Inspect buffer zone coverage beyond Nørrebro boundary
+- [x] **EXPLORE IN QGIS**: Load pedestrian network GeoPackage
+  - Nodes + edges layers verified for connectivity ✓
+  - Highway type distribution checked (residential, footway, cycleway, etc.) ✓
+  - Buffer zone coverage beyond Nørrebro boundary confirmed ✓
 - [ ] Document data quality and topology
 
 **Two Output Formats**:
@@ -165,10 +176,10 @@ Building an MVP for Nørrebro neighbourhood in Copenhagen that integrates multip
   - Output: `data/processed/norrebro_cycling.gpkg` (3.0 MB)
     - Layer `cykeldata`: 3,638 cycling network lines (citywide, no clipping)
     - Layer `cykelstativ`: 1,664 bike parking points (clipped to 800m buffer around Nørrebro)
-- [ ] **EXPLORE IN QGIS**: Load cycling layers
-  - Style by `kategori` (Cykelsti, Supercykelsti, Grøn, Cykelmulighed, Cykelrute)
-  - Check density and connectivity around Nørrebro
-  - Verify bike parking coverage within 800m buffer
+- [x] **EXPLORE IN QGIS**: Load cycling layers
+  - Styled by `kategori` (Cykelsti, Supercykelsti, Grøn, Cykelmulighed, Cykelrute) ✓
+  - Density and connectivity around Nørrebro checked ✓
+  - Bike parking coverage within 800m buffer verified ✓
 - [ ] Document cycling infrastructure coverage
 
 **Dataset Choice: `cykeldata` over `cykelsti`**:
@@ -208,11 +219,11 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
   - Output: `data/processed/norrebro_transport_stops.gpkg` (1.5 MB, EPSG:25832)
     - Layer `stops`: 2,687 features (2,581 bus, 62 train, 44 metro) — one row per (stop, mode) pair
     - Layer `routes`: 181 features (148 bus, 25 train, 8 metro) — actual GPS traces from GTFS `shapes.txt`
-- [ ] **EXPLORE IN QGIS**: Load transport stops GeoPackage
-  - Style stops by `transport_mode` (bus/metro/train)
-  - Verify route line geometries follow actual roads (from shapes.txt)
-  - Check coverage within and around Nørrebro (10 km buffer)
-  - Inspect multi-mode stations (stops with duplicate geometries across modes)
+- [x] **EXPLORE IN QGIS**: Load transport stops GeoPackage
+  - Stops styled by `transport_mode` (bus/metro/train) ✓
+  - Route line geometries follow actual roads (from shapes.txt) ✓
+  - Coverage within and around Nørrebro (10 km buffer) verified ✓
+  - Multi-mode stations inspected ✓
 
 **Data Architecture**:
 
@@ -465,8 +476,8 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 
 ## Progress Tracking
 
-**Current Phase**: Phase 1 - Data Collection (partially complete)
-**Last Updated**: 2026-02-12
+**Current Phase**: Phase 1 - Data Collection (nearly complete — health data remaining)
+**Last Updated**: 2026-02-14
 
 ### Completed
 
@@ -477,6 +488,9 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 - **BBR building attributes downloaded**: 3,439 buildings via WFS API with comprehensive attributes
 - **DAR entrance points downloaded**: 11,911 address points via File Download API (5,639 accurate TD entrance doors)
 - Download script created: `scripts/download/download_bbr_dar.py` with credentials management and caching
+- **BBR + DAR processed**: `norrebro_buildings.gpkg` (1.7 MB) with `buildings` layer (3,439 features, English translations, use descriptions, construction eras, material/heating labels) + `entrances` layer (5,643 TD/TK points within 800m buffer)
+- Script created: `scripts/process/process_buildings.py`
+- **BBR↔DAR linking investigated**: Spatial join via INSPIRE footprints is the recommended approach. UUID linking deferred (requires 620 MB Husnummer download). Explored in notebook `02b_buildings_processed.ipynb`.
 - **Pedestrian network downloaded**: OSM via osmnx, buffered 800m, with walking travel times (GraphML for routing + GeoPackage for QGIS)
 - Download script created: `scripts/download/download_pedestrian_network.py`
 - **Public transport stops & routes downloaded**: Rejseplanen GTFS feed, 10 km buffer, 2,687 stops + 181 route lines with GPS traces from shapes.txt
@@ -487,19 +501,22 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 - **Green spaces downloaded & processed**: Copenhagen Municipality WFS (3 raw datasets), processed into `norrebro_greenspaces.gpkg` with `parks` (77 polygons clipped to 800m) + `playgrounds` (34 points clipped to 800m). Column names translated to English.
 - Scripts created: `scripts/download/download_greenspaces.py` + `scripts/process/process_greenspaces.py`
 - **PROJECT_ROOT bug fixed**: All scripts in `scripts/download/` and `scripts/process/` updated from `.parent.parent` to `.parent.parent.parent` after directory reorganization
+- **All processed datasets explored in QGIS**: Buildings, network, cycling, transport, green spaces — spatial alignment and data quality verified
+- **Exploratory notebooks created**: `00_style_guide`, `01_demographics`, `02_buildings` (raw), `02b_buildings_processed`, `03_transport_network`, `04_green_spaces`
 
 ### Prioritised Next Steps
 
-1. **Spatial join BBR attributes to INSPIRE footprints** (unlock building-level analysis)
+1. **Health data research and download** (CRITICAL — longest lead time, last remaining Phase 1 dataset)
+   - Start with Copenhagen Health Profile (Sundhedsprofil) from Region Hovedstaden
+   - Explore proxy indicators if granular health data unavailable
 2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
-3. Begin health data research (longest lead time — start early)
-4. **EXPLORE IN QGIS**: green spaces layers (parks, playgrounds)
+3. Spatial join BBR attributes to INSPIRE footprints (Phase 2 integration)
 
 ---
 
 ## Notes & Discoveries
 
-### BBR & DAR Data (2026-02-11)
+### BBR & DAR Data (2026-02-11, updated 2026-02-14)
 
 #### Key Discovery: DAR Entrance Point Technical Standards
 
@@ -510,17 +527,31 @@ The DAR Adressepunkt dataset contains ~50% road-based points (V0) and ~50% build
 
 This distinction is critical for accurate network analysis. A spatial join without filtering would incorrectly assign many road-based points as building entrances.
 
-#### BBR Building Use Codes
+#### BBR Building Use Codes (fully mapped)
 
-- Code 140 (multi-dwelling residential) dominates with 1,600+ buildings in Nørrebro
-- Use `byg021BygningensAnvendelse` for land use classification
-- `byg038SamletBygningsareal` provides total built area for density calculations
+All ~80 BBR use codes mapped to English descriptions in `process_buildings.py` per official documentation at <https://teknik.bbr.dk/kodelister>. Key Nørrebro distribution:
+
+- **Residential**: 1,668 buildings (48%) — dominated by code 140 (Apartment building, 1,600+)
+- **Accessory/Other**: 968 (28%) — garages, sheds, carports
+- **Culture/Institutional**: 319 (9%) — schools, churches, daycare
+- **Office/Retail**: 231 (7%) — offices, shops, warehouses
+
+Material codes (wall, roof, heating) also mapped from numeric BBR codes to English. Nørrebro is 59% brick walls, 61% district heating.
+
+#### Construction Eras
+
+Buildings grouped into 7 historical periods. The two largest eras confirm Nørrebro's building history:
+
+- **1850-1900**: 771 buildings (industrialisation, Nørrebro's initial dense development)
+- **1900-1930**: 806 buildings (continued urban expansion)
+- **After 2000**: 618 buildings (contemporary infill/renovation)
 
 #### Data Joining Strategy
 
-1. **BBR → INSPIRE footprints**: Spatial join (most BBR points fall within/near footprints)
-2. **DAR → Buildings**: Filter to TD/TK first, then spatial join for entrance locations
-3. **BBR ↔ DAR exact linking**: Requires national Husnummer file (~620 MB) via `husnummer` UUID — defer unless exact address matching is needed
+1. **BBR → INSPIRE footprints**: Spatial join works well (most BBR points fall within footprints). Confirmed in notebook `02b_buildings_processed.ipynb`.
+2. **DAR → Footprints**: Entrance points (TD) are at the door, so some fall just outside polygon boundaries. A **2m buffer** on footprints improves match rate significantly.
+3. **One-to-many**: Apartment buildings typically have multiple DAR entrance points per footprint polygon.
+4. **BBR ↔ DAR exact linking**: Requires national Husnummer file (~620 MB) via `husnummer` UUID — **deferred**. Spatial join via footprints is sufficient for current analysis.
 
 ### Pedestrian Network (2026-02-11)
 
