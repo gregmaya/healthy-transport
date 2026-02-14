@@ -87,6 +87,7 @@ DAR_HUSNUMMER_OUTPUT = DAR_RAW_DIR / "norrebro_dar_husnummer.gpkg"
 # Building footprints configuration
 INSPIRE_BUILDINGS_FILE = DATA_DIR / "buildings" / "building_inspire.gpkg"
 BUILDING_FOOTPRINTS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_building_footprints.gpkg"
+BUILDINGS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_buildings.gpkg"
 
 # Pedestrian network configuration
 NETWORK_RAW_DIR = RAW_DATA_DIR / "network"

@@ -6,8 +6,9 @@ Currently translates:
 - norrebro_cycling.gpkg: column names + content for both cykeldata and cykelstativ layers
 - norrebro_greenspaces.gpkg: content for park_type in parks layer
 - norrebro_boundary.gpkg: column rename (navn → name)
+- norrebro_buildings.gpkg: already fully translated during processing (no post-hoc needed)
 
-Other processed files (greenspaces, transport, building footprints, network) are already in English.
+Other processed files (transport, building footprints, network) are already in English.
 
 Outputs:
     Overwrites existing files in data/processed/ with English versions.
@@ -28,6 +29,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from utils.config import (
+    BUILDINGS_OUTPUT,
     CYCLING_OUTPUT,
     GREENSPACES_OUTPUT,
     NORREBRO_BOUNDARY_FILE,
@@ -315,6 +317,11 @@ def main():
     translate_cycling()
     translate_greenspaces()
     translate_boundary()
+
+    # norrebro_buildings.gpkg is fully translated during process_buildings.py
+    # (use codes, material codes, and heating codes all mapped to English)
+    if BUILDINGS_OUTPUT.exists():
+        logger.info(f"Skipping: {BUILDINGS_OUTPUT.name} (already translated during processing)")
 
     logger.info("=== Translation complete ===")
 
