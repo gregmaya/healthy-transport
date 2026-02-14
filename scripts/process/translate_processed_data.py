@@ -4,6 +4,7 @@ Translate Danish column names and content values to English in processed GeoPack
 Scans all processed GeoPackage files and applies translations where needed.
 Currently translates:
 - norrebro_cycling.gpkg: column names + content for both cykeldata and cykelstativ layers
+- norrebro_greenspaces.gpkg: content for park_type in parks layer
 - norrebro_boundary.gpkg: column rename (navn → name)
 
 Other processed files (greenspaces, transport, building footprints, network) are already in English.
@@ -28,6 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from utils.config import (
     CYCLING_OUTPUT,
+    GREENSPACES_OUTPUT,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
 )
@@ -150,6 +152,22 @@ CYKELSTATIV_CONTENT = {
     },
 }
 
+# === GREENSPACES: parks layer ===
+
+PARKS_CONTENT = {
+    "park_type": {
+        "Andet grønt område": "Other green area",
+        "Lokale parker": "Local parks",
+        "Regionale parker": "Regional parks",
+        "Vandflader": "Water surfaces",
+        "Kirkegårde": "Cemeteries",
+        "Idrætsanlæg": "Sports facilities",
+        "Planlagte grønne områder": "Planned green areas",
+        "Naturområder": "Nature areas",
+        "Haveanlæg": "Garden facilities",
+    },
+}
+
 # === BOUNDARY ===
 
 BOUNDARY_COLUMNS = {
@@ -222,6 +240,40 @@ def translate_cycling():
     logger.info(f"  Saved: {CYCLING_OUTPUT} ({size_mb:.1f} MB)")
 
 
+def translate_greenspaces():
+    """Translate greenspaces GeoPackage layers."""
+    logger.info(f"Processing: {GREENSPACES_OUTPUT.name}")
+
+    # Read all layers
+    layers = fiona.listlayers(GREENSPACES_OUTPUT)
+    logger.info(f"  Layers found: {layers}")
+
+    layer_data = {}
+    for layer_name in layers:
+        if layer_name == "layer_styles":
+            continue
+        layer_data[layer_name] = gpd.read_file(GREENSPACES_OUTPUT, layer=layer_name)
+
+    # Translate parks layer
+    if "parks" in layer_data:
+        logger.info("  Layer: parks")
+        gdf = layer_data["parks"]
+        row_count = len(gdf)
+        gdf, changes = translate_layer(gdf, {}, PARKS_CONTENT)
+        layer_data["parks"] = gdf
+        logger.info(f"  Rows: {row_count} (unchanged)")
+
+    # Write back all layers
+    first = True
+    for layer_name, gdf in layer_data.items():
+        mode = "w" if first else "a"
+        gdf.to_file(GREENSPACES_OUTPUT, layer=layer_name, driver="GPKG", mode=mode)
+        first = False
+
+    size_mb = GREENSPACES_OUTPUT.stat().st_size / (1024 * 1024)
+    logger.info(f"  Saved: {GREENSPACES_OUTPUT} ({size_mb:.1f} MB)")
+
+
 def translate_boundary():
     """Translate boundary GeoPackage (only norrebro_boundary layer)."""
     logger.info(f"Processing: {NORREBRO_BOUNDARY_FILE.name}")
@@ -261,6 +313,7 @@ def main():
     logger.info("=== Translating Danish → English in processed GeoPackages ===")
 
     translate_cycling()
+    translate_greenspaces()
     translate_boundary()
 
     logger.info("=== Translation complete ===")
