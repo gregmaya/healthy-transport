@@ -4,9 +4,10 @@ Urban health analysis for Copenhagen's Nørrebro neighbourhood integrating multi
 
 ## Project Structure
 
-```
+```text
 healthy-transport/
-├── CLAUDE.MD              # Project checklist and workflow
+├── CLAUDE.MD              # AI instructions and data model
+├── PROGRESS.md            # Project checklist and phase status
 ├── README.md              # This file
 ├── data/
 │   ├── raw/              # Raw downloaded data (NOT in version control)
@@ -58,4 +59,5 @@ healthy-transport/
 
 ## License
 
-[Add license information]
+[MIT License](LICENSE)
+Copyright (c) 2026 Greg Maya
