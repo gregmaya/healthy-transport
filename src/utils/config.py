@@ -120,6 +120,21 @@ KK_GREENSPACE_LAYERS = {
 GREENSPACES_RAW_DIR = RAW_DATA_DIR / "greenspaces"
 GREENSPACES_OUTPUT = PROCESSED_DATA_DIR / "norrebro_greenspaces.gpkg"
 
+# Health data configuration
+HEALTH_RAW_DIR = RAW_DATA_DIR / "health"
+HEALTH_ESUNDHED_FILE = HEALTH_RAW_DIR / "esundhed_kroniske_sygdomme_2010_2025.xlsx"
+HEALTH_SUNDHEDSPROFIL_FILE = HEALTH_RAW_DIR / "copenhagen_sundhedsprofil_indicators.csv"
+HEALTH_DODA1_FILE = HEALTH_RAW_DIR / "statbank_doda1_causes_of_death.csv"
+HEALTH_FOD207_FILE = HEALTH_RAW_DIR / "statbank_fod207_deaths_by_municipality.csv"
+HEALTH_HEAT_GUIDE_FILE = HEALTH_RAW_DIR / "WHO_HEAT_user_guide_2024.pdf"
+HEALTH_OUTPUT = PROCESSED_DATA_DIR / "norrebro_health.csv"
+HEALTH_DANSKERNESSUNDHED_DIR = HEALTH_RAW_DIR / "danskernessundhed"
+HEAT_INPUTS_OUTPUT = PROCESSED_DATA_DIR / "heat_inputs.json"
+HEALTH_SURVEY_BY_AGE_OUTPUT = PROCESSED_DATA_DIR / "health_survey_by_age.csv"
+HEALTH_SURVEY_BY_MUNICIPALITY_OUTPUT = PROCESSED_DATA_DIR / "health_survey_by_municipality.csv"
+HEALTH_CAUSES_OF_DEATH_OUTPUT = PROCESSED_DATA_DIR / "health_causes_of_death.csv"
+HEALTH_DEATHS_BY_MUNICIPALITY_OUTPUT = PROCESSED_DATA_DIR / "health_deaths_by_municipality.csv"
+
 # GTFS route type mapping
 GTFS_ROUTE_TYPES = {
     "bus": [3, *range(700, 800)],

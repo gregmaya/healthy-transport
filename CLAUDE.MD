@@ -332,40 +332,109 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
  ---
 
 
-### 8. Health Metrics (CRITICAL - Most Challenging)
+### 8. Health Metrics
 
-- [ ] Research available health data sources
-  - Danish Health Data Authority (Sundhedsdatastyrelsen)
-  - Public Health registries
-  - Academic research datasets
-- [ ] Identify most granular geographic level available
-  - Municipality level?
-  - Postal code level?
-  - Statistical district level?
-  - Grid level?
-- [ ] Download health metrics data
-  - **Priority**: Cardiovascular disease prevalence/incidence
-  - Non-communicable diseases (NCDs)
-  - Diabetes, respiratory diseases
-  - Mental health indicators if available
-  - Health risk factors (obesity, physical inactivity)
-- [ ] Store as is (RAW) first.
-- [ ] Process and save to `norrebro_health.gpkg` or CSV with geographic identifiers
-- [ ] **EXPLORE IN QGIS**: Load health data layer
-  - Check geographic resolution
-  - Assess data completeness
-  - Identify any privacy/aggregation constraints
+- [x] Research available health data sources
+  - Sundhedsdatabanken (eSundhed) — chronic disease register
+  - Danskernes Sundhed (danskernessundhed.dk) — national health profile survey
+  - StatBank Denmark (DST) — causes of death, mortality by municipality
+  - WHO HEAT Tool — health economic assessment framework for walking/cycling
+- [x] Identify most granular geographic level available
+  - **Municipality level (København = 0101) is the finest publicly available granularity**
+  - Sub-municipal data (e.g., Nørrebro district) requires formal application to Region Hovedstaden with Data Protection Authority approval + institutional affiliation
+  - Future: Apply via OSLOMET credentials for sub-municipal data
+- [x] Set up download infrastructure
+  - Script: `scripts/download/download_health.py`
+    - Automated: StatBank Denmark tables (DODA1 causes of death, FOD207 deaths by municipality) via API
+    - Manual verification: eSundhed XLSX, Sundhedsprofil CSV, WHO HEAT PDF
+  - Guide: `docs/health_data_download_guide.md` — step-by-step instructions for all 5 sources
+  - Raw data directory: `data/raw/health/`
+- [x] Download manual datasets (Sources 1, 2, 5)
+  - eSundhed XLSX: `data/raw/health/esundhed_kroniske_sygdomme_2010_2025.xlsx` (23 MB)
+  - Danskernes Sundhed: 7 indicators in `data/raw/health/danskernessundhed/` (2021 per-kommune + 2023 per-age)
+  - WHO HEAT guide: `data/raw/health/WHO_HEAT_user_guide_2024.pdf` (4.5 MB)
+- [x] Run `scripts/download/download_health.py` — downloaded DODA1 (1.7 MB) and FOD207 (437 KB)
+- [x] Compute WHO HEAT input parameters
+  - Script: `scripts/process/process_heat_inputs.py`
+  - Output: `data/processed/heat_inputs.json`
+  - Reference: `docs/heat_assessment_inputs.md` — ready-to-use cheat sheet for HEAT web tool
+- [x] Re-download physical activity per-age data from Danskernes Sundhed (fixed — proper sample sizes now)
+- [x] Process health data into analysis-ready format
+  - Script: `scripts/process/process_health.py`
+  - Outputs: 4 CSVs in `data/processed/`:
+    - `health_survey_by_age.csv` (126 rows — 7 indicators × 7 age groups × 2 genders)
+    - `health_survey_by_municipality.csv` (174 rows — 6 indicators × 29 municipalities)
+    - `health_causes_of_death.csv` (25,920 rows — DODA1 translated)
+    - `health_deaths_by_municipality.csv` (12,120 rows — FOD207 translated)
+  - Translations: Danish column names → English, gender values translated, percentages parsed to floats, total/summary rows dropped
+- [x] Create exploratory notebook `05_health_metrics.ipynb`
+  - 7 sections: population profile, national mortality (DODA1), Copenhagen mortality (FOD207), health behaviours (all 7 survey indicators), HEAT results, narrative summary
+- [ ] Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
 - [ ] Document limitations and methodological considerations
 
-**Approach**: Start with Copenhagen Health Profile (Sundhedsprofil) from Region Hovedstaden — most accessible public health data at regional level. For finer granularity, explore proxy indicators (e.g., GP visit rates, prescription data) or contact Region Hovedstaden directly.
+**Data Sources (5 total)**:
 
-**Notes**:
+| # | Source | Geographic Level | Content | Format | Access |
+|---|--------|-----------------|---------|--------|--------|
+| 1 | **Sundhedsdatabanken** (eSundhed) | Municipality | Chronic disease prevalence/incidence: Type 1&2 diabetes, COPD, asthma, osteoporosis, dementia, rheumatoid arthritis, schizophrenia. By age, sex. 2010–2025. | XLSX | Free, manual download |
+| 2 | **Danskernes Sundhed** (danskernessundhed.dk) | Municipality | Survey: physical activity, BMI, self-rated health, smoking, stress, diet. 2010–2023. | Interactive viewer (manual extraction) | Free to browse |
+| 3 | **StatBank Denmark** (DODA1) | National | 24 cause-of-death categories incl. heart disease, respiratory, diabetes. By age, sex. 2007–2022. | CSV via API | Free, automated |
+| 4 | **StatBank Denmark** (FOD207) | Municipality | Deaths by municipality, age, sex. 2006–2025. Copenhagen + Region Hovedstaden + national. | CSV via API | Free, automated |
+| 5 | **WHO HEAT Tool** | N/A (framework) | Economic value of walking/cycling health benefits. Inputs: population, modal share, mortality rate, air pollution. | PDF guide + web tool | Free |
 
-- Health data likely most aggregated due to privacy
-- May need to use proxy indicators or modeled data
-- Consider OpenData.dk for public health statistics
-- Contact: Region Hovedstaden (Capital Region) for regional health data
-- Start researching early — this has the longest lead time of all datasets
+**Geographic Granularity Ceiling**:
+
+Municipality level (all of København) is the finest publicly available health data. Sub-municipal data (Nørrebro-specific) exists in underlying registers but requires: (1) formal application to Region Hovedstaden or Sundhedsdatastyrelsen, (2) Data Protection Authority approval, (3) institutional affiliation. The resolution gap itself is part of the project narrative — design decisions need granular data that doesn't exist publicly.
+
+**Narrative Framework**:
+
+The health data serves a top-down narrative connecting infrastructure to health prevention:
+
+1. **National context** (DODA1): Heart disease and diabetes are leading causes of death in Denmark — both preventable through physical activity
+2. **Copenhagen burden** (eSundhed): Municipality-level chronic disease prevalence shows the local disease landscape
+3. **Lifestyle factors** (Danskernes Sundhed): Physical activity levels and BMI by age group — which populations are least active?
+4. **Infrastructure connection** (project analysis): Walking/cycling accessibility from Nørrebro buildings to transit, parks, cycling infrastructure
+5. **Economic valuation** (WHO HEAT): If infrastructure changes increase walking by X minutes/day, what is the economic health benefit?
+
+**Key Evidence for Designers**:
+
+- WHO recommends 150–300 min/week moderate physical activity for adults
+- 30 min/day walking associated with 19% reduction in coronary heart disease risk
+- WHO HEAT Tool (2024 update) provides standardised methodology for calculating health economic value of active transport infrastructure
+- Age-differentiated impacts: older adults, children benefit differently — walking speeds already in config (WALKING_SPEED = 1.4 m/s is population average; demographic-specific speeds needed for analysis)
+
+**Files**:
+
+- Raw: `data/raw/health/` (see `docs/health_data_download_guide.md`)
+  - `statbank_doda1_causes_of_death.csv` — automated via API
+  - `statbank_fod207_deaths_by_municipality.csv` — automated via API
+  - `esundhed_kroniske_sygdomme_2010_2025.xlsx` — manual download
+  - `danskernessundhed/` — 7 indicator subdirectories with per-kommune (2021) + per-age (2023) CSVs
+  - `WHO_HEAT_user_guide_2024.pdf` — manual download
+- Processed:
+  - `data/processed/heat_inputs.json` — all HEAT input parameters (population, mortality, modal share, air pollution, road crashes)
+  - `data/processed/health_survey_by_age.csv` — 126 rows, 7 indicators × age group × gender (totals removed, granular rows only)
+  - `data/processed/health_survey_by_municipality.csv` — 174 rows, 6 indicators × 29 Capital Region municipalities
+  - `data/processed/health_causes_of_death.csv` — 25,920 rows, DODA1 translated to English
+  - `data/processed/health_deaths_by_municipality.csv` — 12,120 rows, FOD207 translated to English
+- Scripts: `scripts/download/download_health.py` + `scripts/process/process_heat_inputs.py` + `scripts/process/process_health.py`
+- Notebook: `notebooks/05_health_metrics.ipynb` — exploratory analysis with 7 sections (population profile, mortality context, health behaviours, WHO HEAT results, narrative synthesis)
+- Docs: `docs/health_data_download_guide.md` + `docs/heat_assessment_inputs.md` (HEAT web tool cheat sheet)
+- Config: Health paths + `HEAT_INPUTS_OUTPUT` + 4 survey/mortality output paths in `src/utils/config.py`
+
+**HEAT Computed Values** (from `process_heat_inputs.py`):
+
+| Parameter | Value | Source |
+|---|---|---|
+| Nørrebro total population | 79,753 | `norrebro_neighbourhoods_population.csv` |
+| Population aged 20-74 (walking) | 63,529 | Calculated from same CSV |
+| Population aged 20-64 (cycling) | 59,605 | Calculated from same CSV |
+| Copenhagen mortality rate (20-74) | 278.7 per 100,000 | FOD207 deaths (1,438) / FOLK1A population (515,913), year 2023 |
+| HEAT default mortality (Denmark) | 500 per 100,000 | Built into HEAT tool |
+| Modal share walking | 21% | DTU Transport Survey 2018 (Copenhagen) |
+| Modal share cycling | 28% | DTU Transport Survey 2018 (Copenhagen) |
+| PM2.5 annual mean | 9.8 µg/m³ | IQAir/EEA 2024 (Copenhagen) |
+| Cycling fatality rate | 15.9 per billion km | ITF/OECD (Denmark) |
 
 ---
 
@@ -445,12 +514,13 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 - **OpenStreetMap Denmark**: https://www.openstreetmap.org/
 - **Copenhagen Municipality**: https://data.kk.dk/ - City open data
 
-### Health Data Sources (To Research)
+### Health Data Sources
 
-- Sundhedsdatastyrelsen (Health Data Authority)
-- Region Hovedstaden (Capital Region)
-- Public health registries
-- Academic data sources
+- **Sundhedsdatabanken** (eSundhed): https://sundhedsdatabank.dk/ - Chronic disease register (municipality level)
+- **Danskernes Sundhed**: https://www.danskernessundhed.dk/ - National health profile survey (municipality level)
+- **StatBank Denmark**: https://www.statbank.dk/ - Causes of death, mortality (national/municipality level)
+- **WHO HEAT Tool**: https://www.heatwalkingcycling.org - Health economic assessment for walking/cycling
+- **WHO HEAT 2024 Guide**: https://www.who.int/europe/publications/i/item/9789289058377
 
 ---
 
@@ -476,8 +546,8 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 
 ## Progress Tracking
 
-**Current Phase**: Phase 1 - Data Collection (nearly complete — health data remaining)
-**Last Updated**: 2026-02-14
+**Current Phase**: Phase 1 - Data Collection (complete) / Phase 2 - Data Processing & Integration (starting)
+**Last Updated**: 2026-02-17
 
 ### Completed
 
@@ -503,14 +573,18 @@ The `cykelsti` layer maps each side of a street separately (two lines per street
 - **PROJECT_ROOT bug fixed**: All scripts in `scripts/download/` and `scripts/process/` updated from `.parent.parent` to `.parent.parent.parent` after directory reorganization
 - **All processed datasets explored in QGIS**: Buildings, network, cycling, transport, green spaces — spatial alignment and data quality verified
 - **Exploratory notebooks created**: `00_style_guide`, `01_demographics`, `02_buildings` (raw), `02b_buildings_processed`, `03_transport_network`, `04_green_spaces`
+- **Health data researched and infrastructure set up**: 5 data sources identified (eSundhed chronic disease register, Danskernes Sundhed survey, StatBank DODA1 causes of death, StatBank FOD207 deaths by municipality, WHO HEAT tool). Municipality level confirmed as finest public granularity. Download script + manual guide created.
+- Scripts created: `scripts/download/download_health.py` + `docs/health_data_download_guide.md`
+- **Health data downloaded**: All 5 sources acquired. StatBank tables (DODA1, FOD207) automated via API. Manual downloads completed: eSundhed chronic disease XLSX, Danskernes Sundhed survey CSVs (7 indicators, 2021 per-kommune + 2023 per-age), WHO HEAT user guide PDF.
+- **WHO HEAT input parameters computed**: `scripts/process/process_heat_inputs.py` calculates all HEAT web tool inputs from project data + StatBank FOLK1A API. Output: `data/processed/heat_inputs.json`. Key result: Copenhagen mortality rate 278.7/100k (vs. HEAT default 500). Reference document: `docs/heat_assessment_inputs.md`.
+- **Health data processed**: `scripts/process/process_health.py` combines 15 Danskernes Sundhed CSVs into 2 unified tables (by age + by municipality), translates StatBank DODA1/FOD207 columns to English. Outputs 4 CSVs in `data/processed/`. Total/summary rows removed from survey data — only granular gender × age group rows retained.
+- **Health metrics notebook created**: `notebooks/05_health_metrics.ipynb` — 7-section exploratory analysis covering population profile, national mortality context, Copenhagen vs national comparison, health behaviours (7 indicators), WHO HEAT results, and narrative synthesis connecting preventive care to active transport infrastructure.
 
 ### Prioritised Next Steps
 
-1. **Health data research and download** (CRITICAL — longest lead time, last remaining Phase 1 dataset)
-   - Start with Copenhagen Health Profile (Sundhedsprofil) from Region Hovedstaden
-   - Explore proxy indicators if granular health data unavailable
-2. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
-3. Spatial join BBR attributes to INSPIRE footprints (Phase 2 integration)
+1. Join demographics to boundary GeoPackage spatially (quick win, unblocks visualization)
+2. Spatial join BBR attributes to INSPIRE footprints (Phase 2 integration)
+3. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet workbook)
 
 ---
 
