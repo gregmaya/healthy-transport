@@ -1,12 +1,12 @@
 # Progress Tracker
 
-**Current Phase**: Phase 1 complete / Phase 2 starting
-**Last Updated**: 2026-02-18
+**Current Phase**: Phase 2 in progress (buildings integration complete)
+**Last Updated**: 2026-02-19
 
 ## Prioritised Next Steps
 
-1. Spatial join demographics CSV → boundary GeoPackage (quick win, unblocks visualization)
-2. Spatial join BBR attributes → INSPIRE footprints (Phase 2 integration)
+1. Population typology model — assign age-specific population to buildings (see `docs/population_typology_brief.md`)
+2. Set up CitySeer network for accessibility analysis (Phase 3)
 3. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
 
 ---
@@ -23,12 +23,11 @@
 - [ ] Spatial join demographics CSV to boundary GeoPackage
 
 ### 3. Building Footprints & Built Environment
-- [x] Download INSPIRE building footprints, clip to Nørrebro
-- [x] Download BBR building attributes (3,439 buildings via WFS)
+- [x] Download INSPIRE building footprints, clip to Nørrebro (5,915 polygons)
+- [x] Download BBR building attributes (3,440 buildings via WFS)
 - [x] Download DAR entrance points (11,911 via File Download API)
 - [x] Process BBR + DAR into `norrebro_buildings.gpkg`
 - [x] Explore BBR-DAR linking strategies (spatial join via INSPIRE recommended)
-- [ ] Spatial join BBR attributes to INSPIRE footprints (Phase 2)
 - [x] Verified in QGIS
 
 ### 4. Road Network
@@ -67,46 +66,49 @@
 
 ---
 
-## Phase 2: Data Processing & Integration
+## Phase 2: Data Integration
 
-### 9. Data Integration & Quality Assessment
-- [ ] Create master GeoPackage: `norrebro_master.gpkg`
-- [ ] Integrate all layers with consistent CRS (EPSG:25832)
-- [ ] Topology validation
-- [ ] Attribute completeness check
-- [ ] Spatial alignment check
-- [ ] Duplicate detection
-- [ ] Visual QA in QGIS
-- [ ] Document integration issues
+Output folder: `data/integrated/` (distinct from `data/processed/`)
 
-### 10. Population Assignment to Buildings
-- [ ] Identify residential buildings from land use
-- [ ] Spatial join population data to building footprints
-- [ ] Validate total population matches source data
-- [ ] Apply demographic distributions to buildings
-- [ ] Visualize and verify in QGIS
+### 9. Buildings Integration
+
+- [x] BBR → INSPIRE footprints spatial join (3,127 matched, 2,788 without BBR)
+- [x] DAR entrances → building footprints (5,509 matched, 134 unlinked, 2m buffer)
+- [x] Neighbourhood assignment (all 5,915 buildings in a sub-neighbourhood)
+- [x] KNN attribute estimation for visualization (2,456 estimated, 332 unmatched)
+- [x] Residential entrance guarantee (82 orphaned → nearest entrance fallback)
+- [x] Exploratory notebook `06_buildings_integration.ipynb`
+- [x] Reproducible script `scripts/integrate/integrate_buildings.py`
+- [x] Verified in QGIS — entrance deduplication confirmed
+- [x] Save to `data/integrated/norrebro_buildings.gpkg` (buildings + entrances layers)
+- [ ] Population typology model (deferred — see `docs/population_typology_brief.md`)
+
+### 10. Remaining Integration
+
+- [ ] Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
+- [ ] Document limitations and methodological considerations
 
 ---
 
-## Phase 3: Analysis Preparation
+## Phase 3: Network Analysis (CitySeer)
 
-### 11. Network Analysis Setup
-- [x] Build pedestrian network topology (osmnx graph)
-- [x] Define walking impedance (1.4 m/s)
-- [ ] Clean disconnected segments (if needed)
-- [ ] Prepare cycling network for routing
-- [ ] Define cycling impedance measures
+Using [CitySeer](https://cityseer.benchmarkurbanism.com/) for all routing and accessibility analysis.
 
-### 12. Accessibility Analysis Framework
-- [ ] Calculate distance/travel time from buildings to parks
-- [ ] Calculate distance/travel time from buildings to transport stops
-- [ ] Calculate distance/travel time from buildings to cycling infrastructure
-- [ ] Create accessibility indicators
+- [ ] Set up CitySeer network from Nørrebro boundary (`osm_graph_from_poly`)
+- [ ] Compute accessibility metrics (parks, transport, cycling) per building
+- [ ] Integrate accessibility scores into building layer
 
-### 13. Health Analysis Framework
-- [ ] Link health metrics to geographic units
-- [ ] Develop methodology for health-environment correlations
-- [ ] Identify analysis variables and indicators
+---
+
+## Phase 4: Web App
+
+Scrollytelling narrative → interactive map explorer (SvelteKit + MapLibre GL JS).
+
+- [ ] Set up SvelteKit project with MapLibre GL JS
+- [ ] Create web data export script (integrated → GeoJSON/JSON in WGS84)
+- [ ] Build narrative scrollytelling sections
+- [ ] Build interactive map explorer
+- [ ] Deploy to Vercel/Netlify
 
 ---
 
@@ -114,5 +116,7 @@
 
 - **CRS**: EPSG:25832 (ETRS89 / UTM zone 32N) for all processed data
 - **File naming**: `norrebro_[category].gpkg`
+- **Data tiers**: `raw/` → `processed/` → `integrated/` → `web/` (future)
+- **Meta files**: README.md, CLAUDE.MD, PROGRESS.md, docs/design_decisions.md, docs/data_catalogue.md, docs/data_sources.md — keep in sync for every commit
 - [ ] Create `norrebro_analysis.qgz` QGIS project file
 - [ ] Save symbology and styles for each layer

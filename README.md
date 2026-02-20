@@ -11,37 +11,42 @@ healthy-transport/
 ├── README.md              # This file
 ├── data/
 │   ├── raw/              # Raw downloaded data (NOT in version control)
-│   │   ├── buildings/    # Building footprints, entrances, land use
-│   │   ├── roads/        # Road centre lines
+│   │   ├── buildings/    # Building footprints (INSPIRE)
+│   │   ├── bbr/          # BBR building attributes
+│   │   ├── dar/          # DAR entrance points
+│   │   ├── network/      # Pedestrian network (GraphML)
 │   │   ├── cycling/      # Cycle paths and routes
-│   │   ├── population/   # Population and demographics
-│   │   ├── health/       # Health metrics
-│   │   ├── transport/    # Bus, metro, train stops
+│   │   ├── transport/    # GTFS public transport
 │   │   ├── greenspaces/  # Parks and open spaces
+│   │   ├── health/       # Health metrics
 │   │   └── boundary/     # Nørrebro boundary
-│   └── processed/        # Cleaned and processed data (NOT in version control)
-├── notebooks/            # Jupyter notebooks for exploration and visualization
+│   ├── processed/        # Cleaned per-category data (NOT in version control)
+│   └── integrated/       # Joined cross-category datasets (NOT in version control)
+├── notebooks/            # Jupyter notebooks for exploration and validation
 ├── src/                  # Source code modules
-├── scripts/              # Utility scripts for data processing
-├── tests/                # Unit tests
-├── docs/                 # Documentation
+├── scripts/
+│   ├── download/         # Data download scripts
+│   ├── process/          # Per-category processing scripts
+│   └── integrate/        # Cross-dataset integration scripts
+├── docs/                 # Documentation and design decisions
 ├── reports/              # Analysis outputs, figures, final reports
 └── requirements.txt      # Python dependencies
 ```
 
 ## Data Storage
 
-- **Format**: GeoPackage (.gpkg) for geospatial data
-- **CRS**: EPSG:25832 (ETRS89 / UTM zone 32N - Denmark standard)
+- **Format**: GeoPackage (.gpkg) for geospatial data, CSV for tabular
+- **CRS**: EPSG:25832 (ETRS89 / UTM zone 32N — Denmark standard)
 - **Version Control**: Data files are excluded from Git (see .gitignore)
+- **Pipeline**: `raw/` → `processed/` → `integrated/` → `web/` (future)
 
 ## Workflow
 
-1. Follow the checklist in `CLAUDE.MD`
-2. Download raw data to `data/raw/[category]/`
-3. Explore in QGIS before proceeding to next category
-4. Process and save to `data/processed/`
-5. Document findings in notebooks
+1. **Download** raw data to `data/raw/[category]/`
+2. **Process** per category — clip to boundary, translate Danish → English → `data/processed/`
+3. **Integrate** — spatial joins across categories → `data/integrated/`
+4. **Explore** in notebooks and QGIS at each stage
+5. **Analyse** — network accessibility, population modelling (Phase 3)
 
 ## Key Data Sources
 
@@ -54,8 +59,9 @@ healthy-transport/
 ## Getting Started
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Review CLAUDE.MD for detailed workflow
-3. Begin with Section 1: Building Footprints
+2. Review `CLAUDE.MD` for data model and conventions
+3. See `PROGRESS.md` for current phase status
+4. See `docs/` for design decisions, data catalogue, and source documentation
 
 ## License
 

@@ -64,6 +64,12 @@ All from `wfs-kbhkort.kk.dk/k101/ows`:
 | `scripts/download/download_gtfs.py` | GTFS national feed | HTTP download |
 | `scripts/download/download_health.py` | StatBank DODA1 + FOD207 | StatBank API |
 
+## Integration Scripts
+
+| Script | Input | Output |
+|---|---|---|
+| `scripts/integrate/integrate_buildings.py` | Footprints + BBR + DAR + Neighbourhoods | `data/integrated/norrebro_buildings.gpkg` |
+
 **Manual downloads** (documented in `docs/health_data_download_guide.md`):
 - eSundhed chronic disease XLSX
 - Danskernes Sundhed survey CSVs (7 indicators)

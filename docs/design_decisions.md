@@ -78,3 +78,25 @@ Municipality level (all of Kobenhavn = 0101) is the finest publicly available he
 3. Institutional affiliation
 
 The resolution gap itself is part of the project narrative — urban design decisions need granular data that doesn't exist publicly. Future path: apply via OsloMet credentials.
+
+## KNN Attribute Estimation for Unmatched Footprints
+
+~48% of INSPIRE footprints have no BBR point inside them (sheds, garages, annexes, or mapping misalignment). For the visualization dataset, these get attributes estimated from nearby matched buildings:
+
+- **Method**: K-nearest neighbors (K=5 max) using `cKDTree` on footprint centroids
+- **Distance cap**: 30m — neighbors beyond this are too far to be meaningful. If a footprint has 3 neighbors within 30m, only those 3 are used. If 0 are within 30m, the footprint stays `unmatched`
+- **Numeric columns** (floors, areas, construction_year): mean of within-cap neighbors
+- **Categorical columns** (use_category, materials): mode of within-cap neighbors
+- **Provenance flag**: `attributes_source` = `bbr` (matched), `estimated` (KNN-filled), or `unmatched` (no neighbor within cap)
+
+This is for visualization only — the model/analysis dataset uses entrance points with real BBR attributes, not estimated ones.
+
+## Residential Entrance Guarantee
+
+Every residential BBR building must have at least one entrance point in the model dataset, because entrances are the unit of analysis for accessibility routing (walking/cycling distances are measured from entrance to destination).
+
+Some residential BBR buildings have no natural entrance match — either their footprint has no DAR entrance within the 2m buffer, or the BBR point didn't match any INSPIRE footprint at all (82 residential buildings). For these, the nearest available DAR entrance is paired to the building via `cKDTree`, flagged with `entrance_source = "nearest"` (vs `"spatial_join"` for natural matches). Note: these 82 orphaned buildings map to only 44 unique entrance points — one entrance can be nearest to multiple orphaned buildings in clustered areas.
+
+## Population Assignment: Deferred
+
+Population is **not** distributed to buildings in the integration step. The naive approach (proportional by `residential_area_m2`) ignores dwelling typology: a 100m² apartment housing a family of 4 has a very different demographic profile from a 100m² apartment split into student rooms. Proper population assignment requires a typology model mapping dwelling sizes and types to household compositions and age distributions. Neighbourhood IDs (`gm_id`, `neighbourhood_name`) are kept in both output layers so the link exists for later enrichment. See `docs/population_typology_brief.md` for the planned approach.

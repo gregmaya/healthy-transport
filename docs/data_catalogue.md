@@ -33,7 +33,7 @@ Key attribute: `gm_id` — unique neighbourhood identifier used to join demograp
 ### BBR Building Attributes
 
 **File**: `norrebro_buildings.gpkg`, layer `buildings`
-**Records**: 3,439 building points (1.7 MB total GeoPackage)
+**Records**: 3,440 building points (1.7 MB total GeoPackage)
 **Source**: Datafordeleren BBR WFS API
 **Raw**: `raw/bbr/norrebro_bbr_buildings.gpkg`
 **Script**: `scripts/process/process_buildings.py`
@@ -57,7 +57,7 @@ Derived columns: `use_description`, `use_category`, `construction_era`, English 
 
 | Category | Count | % | Examples |
 |---|---|---|---|
-| Residential | 1,668 | 48% | Code 140 (apartment building) dominates with 1,600+ |
+| Residential | 1,669 | 48% | Code 140 (apartment building) dominates with 1,600+ |
 | Accessory/Other | 968 | 28% | Garages, sheds, carports |
 | Culture/Institutional | 319 | 9% | Schools, churches, daycare |
 | Office/Retail | 231 | 7% | Offices, shops, warehouses |
@@ -98,10 +98,48 @@ For analysis: filter to TD + TK only (5,643 accurate entrance points).
 ### INSPIRE Building Footprints
 
 **File**: `norrebro_building_footprints.gpkg`
-**Records**: Clipped to Norrebro (1.0 MB)
+**Records**: 5,915 polygons, clipped to Norrebro (1.0 MB)
 **Source**: INSPIRE building footprints (manually downloaded)
 **Raw**: `data/buildings/building_inspire.gpkg` (2.6 GB full dataset)
 **Script**: `scripts/process/clip_building_footprints.py`
+
+### Integrated Buildings
+
+**File**: `data/integrated/norrebro_buildings.gpkg` (4.7 MB)
+**Script**: `scripts/integrate/integrate_buildings.py`
+**Notebook**: `notebooks/06_buildings_integration.ipynb`
+
+Joins BBR attributes onto INSPIRE footprints, links DAR entrances, fills unmatched footprints via KNN, and guarantees every residential building has an entrance.
+
+#### Layer: `buildings` (5,915 footprint polygons — visualization dataset)
+
+All INSPIRE footprints with BBR attributes where available, KNN-estimated where nearby, or unmatched.
+
+| Column | Description |
+|---|---|
+| `building_id` | BBR UUID (null for unmatched) |
+| `use_code`, `use_description`, `use_category` | Building use classification |
+| `construction_year`, `construction_era` | When built |
+| `floors` | Number of floors |
+| `total_area_m2`, `residential_area_m2`, `commercial_area_m2`, `footprint_area_m2` | Area metrics |
+| `wall_material`, `roof_material`, `heating_type` | Building materials |
+| `gm_id`, `neighbourhood_name` | Sub-neighbourhood (1-5) |
+| `attributes_source` | `bbr` (3,127) / `estimated` (2,456) / `unmatched` (332) |
+
+#### Layer: `entrances` (5,725 points — model/analysis dataset)
+
+DAR entrance points enriched with BBR attributes from linked footprints. Unit of analysis for accessibility routing.
+
+| Column | Description |
+|---|---|
+| `entrance_id` | DAR entrance UUID |
+| `positioning_type`, `status` | DAR metadata |
+| `building_id` through `heating_type` | BBR attributes from linked footprint |
+| `gm_id`, `neighbourhood_name` | Sub-neighbourhood |
+| `has_building` | Whether entrance linked to a BBR-enriched footprint |
+| `entrance_source` | `spatial_join` (5,509) / `nearest` (82) / null (134 unlinked) |
+
+Population columns are **not included** — deferred to a dwelling typology model (see `docs/population_typology_brief.md`).
 
 ---
 

@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
+INTEGRATED_DATA_DIR = DATA_DIR / "integrated"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
@@ -141,6 +142,9 @@ GTFS_ROUTE_TYPES = {
     "metro": [1, *range(400, 500)],
     "train": [2, *range(100, 200)],
 }
+
+# Integrated data outputs
+INTEGRATED_BUILDINGS = INTEGRATED_DATA_DIR / "norrebro_buildings.gpkg"
 
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)
