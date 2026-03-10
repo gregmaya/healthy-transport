@@ -62,6 +62,7 @@ DATAFORDELER_FILE_DOWNLOAD_URL = "https://api.datafordeler.dk/FileDownloads/GetF
 
 # BBR (Bygnings- og Boligregistret) configuration
 BBR_LAYER = "bbr_v001:bygning_current"
+BBR_ENHED_LAYER = "bbr_v001:enhed_current"  # Dwelling/unit layer
 BBR_ID_COLUMNS = ["id_lokalId", "id.lokalId", "lokalId", "fid"]
 BBR_KEY_ATTRIBUTES = {
     "use": "byg021BygningensAnvendelse",   # Building use/class code
@@ -75,6 +76,8 @@ BBR_KEY_ATTRIBUTES = {
 }
 BBR_RAW_DIR = RAW_DATA_DIR / "bbr"
 BBR_OUTPUT_FILE = BBR_RAW_DIR / "norrebro_bbr_buildings.gpkg"
+BBR_ENHED_OUTPUT_FILE = BBR_RAW_DIR / "norrebro_bbr_enhed.gpkg"
+BBR_ENHED_CSV = BBR_RAW_DIR / "norrebro_bbr_enhed.csv"  # building_id → antal_boliger
 
 # DAR (Danmarks Adresseregister) configuration
 DAR_ENTITIES = {
@@ -145,6 +148,9 @@ GTFS_ROUTE_TYPES = {
 
 # Integrated data outputs
 INTEGRATED_BUILDINGS = INTEGRATED_DATA_DIR / "norrebro_buildings.gpkg"
+POPULATION_CSV = PROCESSED_DATA_DIR / "norrebro_neighbourhoods_population.csv"
+DWELLINGS_CSV = PROCESSED_DATA_DIR / "norrebro_neighbourhoods_dwellings.csv"
+ENTRANCES_DEMOGRAPHICS_LAYER = "entrances_demographics"
 
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)

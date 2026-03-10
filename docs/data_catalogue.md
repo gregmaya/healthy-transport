@@ -105,11 +105,11 @@ For analysis: filter to TD + TK only (5,643 accurate entrance points).
 
 ### Integrated Buildings
 
-**File**: `data/integrated/norrebro_buildings.gpkg` (4.7 MB)
-**Script**: `scripts/integrate/integrate_buildings.py`
-**Notebook**: `notebooks/06_buildings_integration.ipynb`
+**File**: `data/integrated/norrebro_buildings.gpkg` (12.3 MB)
+**Scripts**: `scripts/integrate/integrate_buildings.py`, `scripts/integrate/integrate_population_typology.py`
+**Notebooks**: `notebooks/06_buildings_integration.ipynb`, `notebooks/07_population_typology.ipynb`
 
-Joins BBR attributes onto INSPIRE footprints, links DAR entrances, fills unmatched footprints via KNN, and guarantees every residential building has an entrance.
+Joins BBR attributes onto INSPIRE footprints, links DAR entrances, fills unmatched footprints via KNN, guarantees every residential building has an entrance, and assigns age-specific population to each entrance point.
 
 #### Layer: `buildings` (5,915 footprint polygons — visualization dataset)
 
@@ -139,7 +139,36 @@ DAR entrance points enriched with BBR attributes from linked footprints. Unit of
 | `has_building` | Whether entrance linked to a BBR-enriched footprint |
 | `entrance_source` | `spatial_join` (5,509) / `nearest` (82) / null (134 unlinked) |
 
-Population columns are **not included** — deferred to a dwelling typology model (see `docs/population_typology_brief.md`).
+#### Layer: `entrances_demographics` (11,367 points — population model output)
+
+All DAR entrance points (from the integrated `entrances` layer) enriched with age-specific population estimates. Script: `scripts/integrate/integrate_population_typology.py`.
+
+**Matching coverage**: 89.5% of entrances have demographics assigned (10,175/11,367). The two-round strategy:
+- **Round 1** (84.8%): key join on `building_id` — entrances whose INSPIRE footprint has a BBR match
+- **Round 2** (4.7%): `sjoin_nearest` with `max_distance=10m` — entrances in KNN-estimated footprints matched to the nearest residential polygon
+- **Unmatched** (10.5%): predominantly non-residential (Culture/Institutional, Office/Retail); only ~34 genuinely residential entrances (0.3%) remain without demographics
+
+**Population columns** (18 total):
+
+| Column pattern | Description |
+|---|---|
+| `pop_children_0_14_<low/mid/high>` | Children age 0–14 (3 scenarios) |
+| `pop_young_adults_15_29_<low/mid/high>` | Young adults 15–29 (3 scenarios) |
+| `pop_working_age_30_64_<low/mid/high>` | Working age 30–64 (3 scenarios) |
+| `pop_older_adults_65_79_<low/mid/high>` | Older adults 65–79 (3 scenarios) |
+| `pop_very_elderly_80plus_<low/mid/high>` | Very elderly 80+ (3 scenarios) |
+| `pop_total_low`, `pop_total_mid`, `pop_total_high` | Total population (3 scenarios) |
+
+**Dwelling typology columns**:
+
+| Column | Description |
+|---|---|
+| `n_dwelling_units` | Residential unit count (BBR Enhed or KNN-estimated) |
+| `avg_unit_m2` | Average unit size in m² (`residential_area_m2 / n_dwelling_units`) |
+| `dwelling_typology` | Tier: `studio` (≤50 m²/unit), `small` (≤80), `medium` (≤110), `family` (>110) |
+| `dominant_group` | Most populous age group at the mid scenario |
+
+**Scenario methodology**: Mid = calibrated prior matrices mapping dwelling tiers → household sizes → age shares, constrained to match neighbourhood totals (pycnophylactic). Low/high = ±40% perturbation toward uniform distribution, row-sum preserved.
 
 ---
 

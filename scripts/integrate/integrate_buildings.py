@@ -64,6 +64,7 @@ NUMERIC_COLS = [
     "commercial_area_m2",
     "footprint_area_m2",
     "construction_year",
+    "antal_boliger",  # residential unit count from BBR Enhed; KNN-filled for estimated buildings
 ]
 CATEGORICAL_COLS = [
     "use_category",
@@ -88,6 +89,7 @@ BUILDING_OUTPUT_COLS = [
     "residential_area_m2",
     "commercial_area_m2",
     "footprint_area_m2",
+    "antal_boliger",
     "wall_material",
     "roof_material",
     "heating_type",

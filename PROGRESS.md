@@ -1,13 +1,12 @@
 # Progress Tracker
 
-**Current Phase**: Phase 2 in progress (buildings integration complete)
-**Last Updated**: 2026-02-19
+**Current Phase**: Phase 2 complete — ready for Phase 3 (CitySeer network analysis)
+**Last Updated**: 2026-02-25
 
 ## Prioritised Next Steps
 
-1. Population typology model — assign age-specific population to buildings (see `docs/population_typology_brief.md`)
-2. Set up CitySeer network for accessibility analysis (Phase 3)
-3. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
+1. Set up CitySeer network for accessibility analysis (Phase 3)
+2. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
 
 ---
 
@@ -81,7 +80,9 @@ Output folder: `data/integrated/` (distinct from `data/processed/`)
 - [x] Reproducible script `scripts/integrate/integrate_buildings.py`
 - [x] Verified in QGIS — entrance deduplication confirmed
 - [x] Save to `data/integrated/norrebro_buildings.gpkg` (buildings + entrances layers)
-- [ ] Population typology model (deferred — see `docs/population_typology_brief.md`)
+- [x] Population typology model — dwelling-type tiers, low/mid/high scenarios, 5 age groups (notebook 07 + `scripts/integrate/integrate_population_typology.py`)
+- [x] Two-round entrance matching: building_id join (84.8%) + spatial fallback sjoin_nearest 10m (89.5% total)
+- [x] `entrances_demographics` layer: 11,367 rows, 18 population columns, saved to `data/integrated/norrebro_buildings.gpkg`
 
 ### 10. Remaining Integration
 

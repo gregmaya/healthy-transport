@@ -43,7 +43,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 | File | Layers / Content |
 |---|---|
-| `norrebro_buildings.gpkg` | `buildings`: 5,915 INSPIRE footprint polygons with BBR attributes + KNN estimates + `attributes_source` flag (bbr/estimated/unmatched) · `entrances`: 5,725 DAR points with linked BBR attributes + `entrance_source` flag (spatial_join/nearest) |
+| `norrebro_buildings.gpkg` | `buildings`: 5,915 INSPIRE footprint polygons with BBR attributes + KNN estimates + `attributes_source` flag (bbr/estimated/unmatched) · `entrances`: 11,367 DAR points with linked BBR attributes + `entrance_source` flag (spatial_join/nearest) · `entrances_demographics`: 11,367 entrance points + 18 population columns (5 age groups × low/mid/high scenarios + totals) + `dwelling_typology` / `dominant_group` |
 
 ## Routing & Network Analysis: CitySeer
 
@@ -73,9 +73,8 @@ These non-obvious rules affect code correctness — follow them always:
 
 ## Immediate Next Steps
 
-1. Population typology model — assign age-specific population to residential buildings (see `docs/population_typology_brief.md`)
-2. Set up CitySeer network for accessibility analysis (Phase 3)
-3. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
+1. Set up CitySeer network for accessibility analysis (Phase 3)
+2. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
 
 ## Reference Documents
 

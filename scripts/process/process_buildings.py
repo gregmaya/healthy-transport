@@ -30,6 +30,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from utils.config import (
+    BBR_ENHED_CSV,
     BBR_OUTPUT_FILE,
     BUILDINGS_OUTPUT,
     DAR_ADRESSEPUNKT_OUTPUT,
@@ -347,6 +348,24 @@ def main():
     bbr["wall_material"] = map_codes(bbr["wall_material"], WALL_MATERIAL_CODES)
     bbr["roof_material"] = map_codes(bbr["roof_material"], ROOF_MATERIAL_CODES)
     bbr["heating_type"] = map_codes(bbr["heating_type"], HEATING_TYPE_CODES)
+
+    # Join antal_boliger from BBR Enhed (residential unit count per building)
+    if BBR_ENHED_CSV.exists():
+        enhed = pd.read_csv(BBR_ENHED_CSV)
+        bbr = bbr.merge(enhed[["building_id", "antal_boliger"]], on="building_id", how="left")
+        matched = bbr["antal_boliger"].notna().sum()
+        total_units = int(bbr["antal_boliger"].sum(min_count=1) or 0)
+        logger.info(
+            "Joined antal_boliger: %d/%d buildings matched (%d total units)",
+            matched, len(bbr), total_units,
+        )
+    else:
+        bbr["antal_boliger"] = None
+        logger.warning(
+            "Enhed CSV not found (%s). Run download_bbr_enhed.py first. "
+            "antal_boliger set to null.",
+            BBR_ENHED_CSV,
+        )
 
     # Log use category distribution
     logger.info("Use category distribution:")

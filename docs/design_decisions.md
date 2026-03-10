@@ -97,6 +97,60 @@ Every residential BBR building must have at least one entrance point in the mode
 
 Some residential BBR buildings have no natural entrance match — either their footprint has no DAR entrance within the 2m buffer, or the BBR point didn't match any INSPIRE footprint at all (82 residential buildings). For these, the nearest available DAR entrance is paired to the building via `cKDTree`, flagged with `entrance_source = "nearest"` (vs `"spatial_join"` for natural matches). Note: these 82 orphaned buildings map to only 44 unique entrance points — one entrance can be nearest to multiple orphaned buildings in clustered areas.
 
-## Population Assignment: Deferred
+## Population Assignment: Dwelling Typology Model (notebook 07 + integrate_population_typology.py)
 
-Population is **not** distributed to buildings in the integration step. The naive approach (proportional by `residential_area_m2`) ignores dwelling typology: a 100m² apartment housing a family of 4 has a very different demographic profile from a 100m² apartment split into student rooms. Proper population assignment requires a typology model mapping dwelling sizes and types to household compositions and age distributions. Neighbourhood IDs (`gm_id`, `neighbourhood_name`) are kept in both output layers so the link exists for later enrichment. See `docs/population_typology_brief.md` for the planned approach.
+Population is distributed to residential entrance points in `scripts/integrate/integrate_population_typology.py`, validated in `notebooks/07_population_typology.ipynb`. The model uses **residential unit count (`antal_boliger`)** as the weight (strictly better than floor area), then applies dwelling-type priors to derive age-specific distributions.
+
+### Why unit count beats area
+
+Population scales with dwelling units, not floor area. A 600 m² building could be 1 luxury flat (2 people) or 8 small apartments (16 people). `residential_area_m2` assumes uniform unit sizes everywhere, which is false — Nørrebro has everything from 50 m² pre-war studios to 120 m² post-2000 family apartments.
+
+### Why area was tried first (and its failure)
+
+The initial approach used `residential_area_m2` proportionally. This exposed a KNN inflation problem: estimated buildings (no BBR data, ~46% of residential stock) were assigned residential area via KNN mean-averaging of nearby buildings. This inflated estimated unit sizes to 200+ m²/unit (expected: 50–80 m²), biasing population toward estimated buildings. The unit-count approach avoids this entirely.
+
+### `antal_boliger` source: BBR Enhed registry
+
+`antal_boliger` comes from the BBR Enhed WFS entity (dwelling-level records, separate from the building WFS layer). Download script: `scripts/download/download_bbr_enhed.py` — uses the File Download API (not WFS, which only has the building layer). Filters to `status=6` (aktuel) and residential use codes 110–190.
+
+Coverage: 1,653 of 3,439 Nørrebro BBR buildings have direct Enhed matches (48%). The rest are KNN-averaged from up to 5 spatial neighbours (30m cap). KNN unit-count averaging produces median 21 units/building vs BBR median 17 — a small and acceptable inflation, far better than the area case.
+
+### Dwelling typology tiers → age-specific distributions
+
+Average unit size (`residential_area_m2 / n_dwelling_units`) classifies each building into a tier:
+
+| Tier | Avg m²/unit | Household composition |
+|---|---|---|
+| `studio` | ≤50 | Predominantly singles (90%) |
+| `small` | ≤80 | Mix of singles and couples |
+| `medium` | ≤110 | Mix of couples, families |
+| `family` | >110 | Predominantly families (50% 4+ person) |
+
+Each tier maps to household size probabilities (TIER_TO_HS), which map to age-group shares (HS_TO_AGE), producing a 5-group age distribution: children 0–14, young adults 15–29, working age 30–64, older adults 65–79, very elderly 80+.
+
+### Pycnophylactic constraint
+
+Within each neighbourhood × age group, building-level estimates are rescaled so their sum exactly matches the Statistics Denmark KKBEF8 total. This guarantees that the spatial disaggregation is consistent with the authoritative neighbourhood-level counts.
+
+### Low/mid/high scenarios
+
+Three uncertainty scenarios are produced for all 5 age groups (18 population columns total):
+- **Mid**: calibrated prior matrices
+- **Low**: 0.6 × mid + 0.4 × uniform (attenuates the typology signal)
+- **High**: 1.4 × mid − 0.4 × uniform (amplifies the typology signal)
+
+Row sums are preserved within each scenario so neighbourhood totals still match exactly.
+
+## Two-Round Entrance Matching (integrate_population_typology.py)
+
+Demographics are assigned to entrance points in two rounds because ~15% of INSPIRE footprints have no BBR match (KNN-estimated, `building_id` is null).
+
+**Round 1** (key join on `building_id`): matches 9,643 of 11,367 entrances (84.8%). Null building_ids are explicitly excluded from the join to prevent NaN×NaN cartesian explosion in pandas merge.
+
+**Round 2** (spatial fallback): the 1,724 unmatched entrances are matched via `sjoin_nearest` against residential building polygons with `max_distance=10m`. This adds ~541 matches, reaching 89.5% total.
+
+**Remaining 10.5% unmatched** are predominantly non-residential: Culture/Institutional (432), Office/Retail (266), and other non-housing uses. Only ~34 genuinely residential entrances (0.3%) remain unmatched — acceptable.
+
+### NaN×NaN cartesian explosion (avoided)
+
+When merging on `building_id`, pandas treats `NaN == NaN`, matching all null rows against each other. With 2,788 null building_ids in the entrances and population tables, an unconstrained merge produces ~843,000 rows. Always filter with `dropna(subset=["building_id"])` before merging.
