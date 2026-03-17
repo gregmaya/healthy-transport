@@ -1,19 +1,44 @@
 # Nørrebro Healthy Transport — AI Instructions
 
-Urban health analysis MVP for Nørrebro, Copenhagen. Integrates official Danish data sources to measure walking/cycling accessibility from buildings to parks, transport, and cycling infrastructure.
+Urban health analysis for Nørrebro, Copenhagen. The goal is to identify optimal **bus stop locations** by scoring street segments that lie along existing bus routes for their potential population health benefit, delivered as a scrollytelling web application that hands off to an interactive GIS tool.
+
+> **Before making any structural changes to the pipeline or output layers, read [`docs/REORIENTATION_BRIEF.md`](docs/REORIENTATION_BRIEF.md).**
+
+---
+
+## Binding Design Decisions
+
+These constraints are non-negotiable and must be respected in all pipeline and front-end work:
+
+1. **Candidate segments are those lying on bus routes only** — not every segment in the network. Filter to segments within a 15m buffer of GTFS bus route lines before scoring. This is both computationally efficient and conceptually correct: a bus stop can only exist where a bus runs.
+
+2. **Existing stop locations are a benchmark, not an input** — they are never used to compute scores. The scoring model asks: *"if a stop were placed at this segment, how much health benefit would it generate?"* Existing stops are overlaid afterwards to reveal where current provision aligns with or diverges from the high-scoring zones.
+
+3. **Primary output layer is scored bus-route segments** — not address points or building footprints. Address point scores are an intermediate calculation only. The intervention space for the tool's audience (planners, designers, policy makers) is the public realm.
+
+4. **Health benefit model uses population-differentiated curves** — one curve per demographic group (working-age adults 18–64, elderly 65+, children under 15, reduced mobility). The output is a *range* of optimal stop locations, not a single point.
+
+5. **Web app structure is scrollytelling → interactive GIS tool** — built with MapLibre GL JS and Scrollama. The narrative hands off to a fully interactive segment-scored map.
+
+6. **Network distance, not Euclidean** — all distance calculations use graph shortest-path distance through the pedestrian network. Crow-flies distance is never used for scoring.
+
+---
 
 ## Data Pipeline Convention
 
-All pipelines must follow this sequence:
+All pipelines follow this sequence:
 
 1. **Download** raw data as-is → store in `data/raw/<category>/`
 2. **Process** in a separate script → clip to boundary, translate Danish → English field names, combine related datasets into layers of a single GeoPackage → save to `data/processed/`
 3. **Integrate** — join/combine processed datasets (spatial joins, population interpolation) → save to `data/integrated/`
-4. **Explore** in notebooks or QGIS for validation at each stage
+4. **Score** — compute segment-level health benefit scores → save to `data/integrated/` → export to `data/web/`
+5. **Explore** in notebooks or QGIS for validation at each stage
 
 Translation happens only in processing scripts — raw data keeps original Danish field names. Related datasets become layers in one GeoPackage (e.g. parks + playgrounds → `norrebro_greenspaces.gpkg`).
 
 **Integration approach**: Use left joins throughout. Inspect unmatched rows in notebooks before deciding how to handle them. Explore in notebooks first, convert to scripts once the approach is validated.
+
+---
 
 ## Current Data Model
 
@@ -45,9 +70,22 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 |---|---|
 | `norrebro_buildings.gpkg` | `buildings`: 5,915 INSPIRE footprint polygons with BBR attributes + KNN estimates + `attributes_source` flag (bbr/estimated/unmatched) · `entrances`: 11,367 DAR points with linked BBR attributes + `entrance_source` flag (spatial_join/nearest) · `entrances_demographics`: 11,367 entrance points + 18 population columns (5 age groups × low/mid/high scenarios + totals) + `dwelling_typology` / `dominant_group` |
 
-## Routing & Network Analysis: CitySeer
+### Scored (`data/integrated/` → export to `data/web/`)
 
-Use [CitySeer](https://cityseer.benchmarkurbanism.com/) for all routing and accessibility analysis (not osmnx/networkx).
+| File | Content |
+|---|---|
+| `norrebro_bus_segments_scored.gpkg` | 20m network segments lying on bus routes, with 5–6 score attributes: `score_aggregate`, `score_working_age`, `score_elderly`, `score_children`, `score_reduced_mobility` |
+| `norrebro_bus_segments_scored.geojson` | Web export of scored bus-route segments (WGS84) |
+
+*These files do not exist yet — they are the target output of Phase 3.*
+
+---
+
+## Routing & Network Analysis
+
+### Library: CitySeer
+
+- **CitySeer** is used for network setup, graph construction, and node/edge preparation:
 
 ```python
 from cityseer.tools import io, graphs
@@ -57,41 +95,106 @@ G = graphs.nx_consolidate_nodes(G)
 nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 ```
 
+- **CitySeer** is used for both network setup and the segment scoring loop — computing shortest-path distances from each segment midpoint to all address points within 1,500m. CitySeer is chosen over NetworkX for its performance and its native support for urban network analysis.
+
 The existing osmnx GraphML + GeoPackage remain valid for QGIS visualisation only.
+
+---
+
+## Health Benefit Model
+
+### B(d) Function
+
+Scoring applies only to **candidate segments** — those lying on bus routes. For each candidate segment, health benefit is computed as:
+
+```
+score = Σ [ B(d_i) × population_i ]   for all address points i within 1,500m
+```
+
+Where `d_i` is the network distance from the segment midpoint to address point `i`, and `B(d)` is the population-group-specific benefit curve.
+
+**Candidate segment filter:** intersect the 20m pedestrian network with a 15m buffer around GTFS bus route lines. Only matching segments enter the scoring loop. Existing bus stop locations play no role in this computation — they are a comparison layer only.
+
+### Population Segment Parameters
+
+| Segment | Peak Zone | Zero Beyond | Notes |
+|---|---|---|---|
+| Working-age adults (18–64) | 400–700m | ~1,200m | Widest curve. Highest cardiovascular benefit per trip. |
+| Elderly (65+) | 200–400m | ~700m | Curve shifts left. Deterrence rises sharply beyond 500m. |
+| Children (under 15) | 150–350m | ~600m | Safety quality dominates. Habit-formation benefit. |
+| Reduced mobility | 0–200m | ~350m | Very narrow. Most transit-dependent group. |
+
+### Curve Shape
+
+Each curve is a modified Gaussian / beta distribution with three zones:
+- **Ramp-up** (0–150m): benefit rises from near-zero
+- **Peak plateau** (150m to group peak): aligns with WHO 10-min walk target
+- **Decay** (peak to zero threshold): deterrence rises, self-selection dominates
+
+Three parameters are exposed as interactive sliders in the web tool: peak distance, decay steepness, zero-benefit threshold.
+
+### Key Literature
+
+- Lars Bo Andersen et al. — Danish active travel dose-response and all-cause mortality
+- WHO Global Action Plan on Physical Activity 2018–2030
+- Besser & Dannenberg (2005); Lachapelle & Frank (2009) — walk-to-transit distributions
+
+---
 
 ## Critical Analysis Rules
 
 These non-obvious rules affect code correctness — follow them always:
 
 1. **DAR entrance filtering**: Always filter `oprindelse_tekniskStandard IN ('TD', 'TK')`. Never use V0 road-based points as building entrances.
-2. **Network formats**: GraphML (raw/) is for routing via networkx/osmnx. GeoPackage (processed/) is for QGIS only — it has no graph topology.
-3. **CRS**: All processed outputs must be EPSG:25832. GraphML stays WGS84 for osmnx compatibility.
+2. **Network formats**: GraphML (raw/) is for routing via networkx/osmnx/CitySeer. GeoPackage (processed/) is for QGIS only — it has no graph topology.
+3. **CRS**: All processed outputs must be EPSG:25832. GraphML stays WGS84 for osmnx compatibility. Web exports (GeoJSON) must be WGS84.
 4. **Cycling layer**: Use `cykeldata` (one line per street) for proximity analysis, not `cykelsti` (duplicates per side of street).
 5. **Walking speed**: 1.4 m/s baseline is a population average. Must be recalculated per demographic group at analysis time.
 6. **Health data granularity**: Municipality level (all of København) is the finest publicly available. Sub-municipal data requires formal application.
 7. **Spatial join strategy**: BBR → INSPIRE footprints via spatial join. DAR entrance points need a 2m buffer on footprints (doors fall just outside polygon edges).
+8. **Candidate segments are bus-route segments only** — always filter the pedestrian network to segments within 15m of GTFS bus route lines before running the scoring loop. Never score the full network.
+9. **Existing stop locations are never scoring inputs** — they are a benchmark overlay applied after scoring to compare current provision against optimal zones. Using existing stops as inputs would merely evaluate the status quo rather than identify improvements.
+10. **Age-disaggregated population**: If address-level age data is unavailable, apply census-zone age distributions as weights. This assumption must be flagged clearly in the tool UI and in any output documentation.
+
+---
+
+## Narrative Framework
+
+The scrollytelling narrative connects infrastructure to health prevention across two levels:
+
+### Top-down health context (data already collected)
+1. **National context** (DODA1): Heart disease and diabetes are leading causes of death — both preventable through physical activity
+2. **Copenhagen burden** (eSundhed): Municipality-level chronic disease prevalence
+3. **Lifestyle factors** (Danskernes Sundhed): Physical activity and BMI by age group
+4. **Economic valuation** (WHO HEAT): Economic health benefit of increased walking/cycling
+
+### Scrollytelling arc (6 steps, Scrollama-driven)
+| Step | Title | Map State |
+|---|---|---|
+| 1 | The hidden cost of bad stop placement | Nørrebro overview, existing stops shown |
+| 2 | Walking is medicine | Zoom to residential block; animate catchment ring |
+| 3 | The sweet spot is a range, not a point | Family of population curves animating over the map |
+| 4 | Scoring the streets | Segment scoring layer fades in across the district |
+| 5 | Where the current network leaves gaps | Existing stops overlay; highlight gap areas |
+| 6 | Explore it yourself | Full interactive tool loads |
+
+---
 
 ## Immediate Next Steps
 
-1. Set up CitySeer network for accessibility analysis (Phase 3)
-2. Process eSundhed chronic disease XLSX (deferred — complex multi-sheet format)
+1. **Confirm age-disaggregated population availability** — query Statistics Denmark and data.kk.dk for address-level age band data. Define fallback if only census-zone resolution is available.
+2. **Implement and plot the benefit curves** — write `src/health/benefit_curves.py` with `B(d)` parameterised for each demographic group. Validate against literature. Commit as a notebook.
+3. **Reframe pipeline output target** — ensure all in-progress notebooks treat scored 20m segments as the primary deliverable before any further processing work proceeds.
+
+---
 
 ## Reference Documents
 
 - [PROGRESS.md](PROGRESS.md) — project checklist and phase status
+- [docs/REORIENTATION_BRIEF.md](docs/REORIENTATION_BRIEF.md) — strategic decisions and rationale
 - [docs/data_catalogue.md](docs/data_catalogue.md) — per-dataset attributes, record counts, schemas
 - [docs/design_decisions.md](docs/design_decisions.md) — architectural rationale ("why" behind choices)
 - [docs/data_sources.md](docs/data_sources.md) — URLs, APIs, credentials, download scripts
-- [docs/population_typology_brief.md](docs/population_typology_brief.md) — dwelling-to-population model design prompt
+- [docs/population_typology_brief.md](docs/population_typology_brief.md) — dwelling-to-population model design
 - [docs/health_data_download_guide.md](docs/health_data_download_guide.md) — manual download instructions for health data
 - [docs/heat_assessment_inputs.md](docs/heat_assessment_inputs.md) — WHO HEAT web tool cheat sheet
-
-## Narrative Framework
-
-The health data serves a top-down narrative connecting infrastructure to health prevention:
-
-1. **National context** (DODA1): Heart disease and diabetes are leading causes of death — both preventable through physical activity
-2. **Copenhagen burden** (eSundhed): Municipality-level chronic disease prevalence
-3. **Lifestyle factors** (Danskernes Sundhed): Physical activity and BMI by age group
-4. **Infrastructure connection** (project analysis): Walking/cycling accessibility from buildings to transit, parks, cycling infrastructure
-5. **Economic valuation** (WHO HEAT): Economic health benefit of increased walking/cycling
