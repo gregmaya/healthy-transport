@@ -1,4 +1,5 @@
 import { STEPS } from "./config.js";
+import { enableScrollLock, disableScrollLock } from "./state.js";
 import {
   showOverview,
   showCatchmentRing,
@@ -26,6 +27,7 @@ const TRANSITION_FNS = {
 export function buildSteps() {
   const container = document.querySelector(".scroll-container");
   STEPS.forEach((step, i) => {
+    const isLast = i === STEPS.length - 1;
     const div = document.createElement("div");
     div.className = "step";
     div.dataset.step = i;
@@ -34,15 +36,18 @@ export function buildSteps() {
         <span class="step-number">${String(i + 1).padStart(2, "0")}</span>
         <h2>${step.title}</h2>
         <p>${step.body}</p>
+        ${isLast ? '<button class="cta-explore" id="btn-enter-tool">Explore the map →</button>' : ""}
       </div>`;
     container.appendChild(div);
   });
 }
 
+
 // ── Initialise Scrollama ─────────────────────────────────────────────────────
 
 export function initScroll() {
   const scroller = scrollama();
+  const lastIndex = STEPS.length - 1;
 
   scroller
     .setup({
@@ -54,9 +59,19 @@ export function initScroll() {
       document.querySelectorAll(".step").forEach((el) => el.classList.remove("active"));
       element.classList.add("active");
 
+      if (index === lastIndex) {
+        enableScrollLock();
+      }
+
       const fnName = STEPS[index].mapFn;
       const fn = TRANSITION_FNS[fnName];
       if (fn) fn();
+    })
+    .onStepExit(({ index, direction }) => {
+      // Scrolling back up past the last step — release the lock
+      if (index === lastIndex && direction === "up") {
+        disableScrollLock();
+      }
     });
 
   window.addEventListener("resize", scroller.resize);
@@ -86,7 +101,13 @@ export function initToolPanel() {
     interiorChk.addEventListener("change", () => toggleInteriorOnly(interiorChk.checked));
   }
 
-  // Back to narrative button
+  // CTA button inside the last narrative step
+  const enterBtn = document.getElementById("btn-enter-tool");
+  if (enterBtn) {
+    enterBtn.addEventListener("click", enterInteractiveTool);
+  }
+
+  // Back to narrative button (inside tool panel)
   const backBtn = document.getElementById("btn-back-narrative");
   if (backBtn) {
     backBtn.addEventListener("click", backToNarrative);

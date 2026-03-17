@@ -16,30 +16,24 @@
   --shadow: 0 2px 12px rgba(8, 48, 107, 0.12);
 }
 
-html, body {
-  height: 100%;
+html {
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
 
-/* ── Layout ───────────────────────────────────────────────────────────────── */
+/* Allow window scroll so Scrollama works out of the box */
+body { min-height: 100vh; }
+
+/* ── Layout — two column, window scrolls ─────────────────────────────────── */
 
 #app {
   display: grid;
   grid-template-columns: 42% 58%;
-  height: 100vh;
-  overflow: hidden;
+  align-items: start;
 }
 
-/* When the interactive tool is active, collapse the scroll column */
-#map.fullscreen {
-  grid-column: 1 / -1;
-  width: 100vw;
-}
-.scroll-container.collapsed { display: none; }
-
-/* ── Map container ────────────────────────────────────────────────────────── */
+/* ── Map container — sticky on window scroll ─────────────────────────────── */
 
 #map {
   position: sticky;
@@ -50,23 +44,25 @@ html, body {
   order: 2;
 }
 
-/* ── Scroll container ─────────────────────────────────────────────────────── */
+/* Interactive tool: map takes over the full viewport (fixed) */
+body.is-interactive #map {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 500;
+}
+
+/* Hide but preserve layout so back-navigation doesn't jump */
+body.is-interactive .scroll-container {
+  visibility: hidden;
+}
+
+/* ── Scroll container — no overflow, page scroll drives Scrollama ────────── */
 
 .scroll-container {
   order: 1;
-  height: 100vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0 0 60vh;
-  scrollbar-width: thin;
-  scrollbar-color: var(--blue-2) transparent;
-}
-
-/* Spacer before first step */
-.scroll-container::before {
-  content: "";
-  display: block;
-  height: 40vh;
+  padding: 40vh 0 60vh;
 }
 
 /* ── Step cards ───────────────────────────────────────────────────────────── */
@@ -123,7 +119,7 @@ html, body {
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
   box-shadow: var(--shadow);
-  z-index: 100;
+  z-index: 600;
   min-width: 240px;
 }
 
@@ -259,24 +255,38 @@ html, body {
   background: linear-gradient(to right, #f7fbff, #6baed6, #08306b);
 }
 
+/* ── CTA button (last step card — "Explore the map") ─────────────────────── */
+
+.cta-explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--blue-3);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cta-explore:hover { background: var(--blue-4); }
+
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
   #app {
     grid-template-columns: 1fr;
-    grid-template-rows: 50vh 1fr;
   }
   #map {
     order: 1;
     height: 50vh;
-    position: sticky;
-    top: 0;
   }
   .scroll-container {
     order: 2;
-    height: auto;
-    padding-bottom: 4rem;
+    padding: 2rem 0 4rem;
   }
-  .scroll-container::before { height: 2rem; }
   #curves-overlay { width: calc(100vw - 2rem); right: 1rem; bottom: 1rem; }
 }

@@ -1,4 +1,5 @@
 import { DATA, MAP_INIT, NORREBRO_BOUNDS, SCORE_RAMP, GROUP_RAMPS } from "./config.js";
+import { disableScrollLock } from "./state.js";
 
 let map;
 let curvesPanel = null;
@@ -173,22 +174,20 @@ export function enterInteractiveTool() {
   _setVisibility("segments-aggregate", "visible");
   _setVisibility("stops-layer", "visible");
   document.getElementById("tool-panel").classList.remove("hidden");
-  document.querySelector(".scroll-container").classList.add("collapsed");
-  document.getElementById("map").classList.add("fullscreen");
-  map.resize();
+  document.body.classList.add("is-interactive");
+  // Wait one frame for the fixed layout to apply before resizing the map
+  requestAnimationFrame(() => map.resize());
 }
 
 export function backToNarrative() {
-  // Restore the two-column layout
+  disableScrollLock();
   document.getElementById("tool-panel").classList.add("hidden");
-  document.querySelector(".scroll-container").classList.remove("collapsed");
-  document.getElementById("map").classList.remove("fullscreen");
-  map.resize();
-  // Scroll narrative back to the top
-  const container = document.querySelector(".scroll-container");
-  container.scrollTo({ top: 0, behavior: "smooth" });
-  // Reset map to overview state
-  showOverview();
+  document.body.classList.remove("is-interactive");
+  requestAnimationFrame(() => {
+    map.resize();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    showOverview();
+  });
 }
 
 // ── Interactive tool: group toggle ──────────────────────────────────────────

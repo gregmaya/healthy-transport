@@ -1,6 +1,6 @@
-// Data paths — relative to project root.
-// Serve with: python -m http.server 8000  (from project root, not from web/)
-// Then open: http://localhost:8000/web/index.html
+// Data paths — relative to index.html in the assembled dist/
+// Local dev:  bash scripts/dev.sh  → http://localhost:8000
+// Production: GitHub Actions assembles the same structure → gh-pages branch
 export const DATA = {
   segments: "data/web/norrebro_bus_segments_scored.geojson",
   boundary: "data/web/norrebro_boundary.geojson",

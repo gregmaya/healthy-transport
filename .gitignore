@@ -207,6 +207,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Local dev build
+dist/
+
 # Data files - Nørrebro MVP
 # Exclude all data files to prevent large files from being committed
 data/*
@@ -224,6 +227,9 @@ cache/
 *.qpj
 *.geojson
 *.kml
+# Allow web export GeoJSONs — small, needed by the app
+!data/web/
+!data/web/*.geojson
 *.gdb/
 *.tif
 *.tiff
