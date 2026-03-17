@@ -146,11 +146,18 @@ GTFS_ROUTE_TYPES = {
     "train": [2, *range(100, 200)],
 }
 
+# Web export
+WEB_DATA_DIR = DATA_DIR / "web"
+WEB_SEGMENTS_GEOJSON = WEB_DATA_DIR / "norrebro_bus_segments_scored.geojson"
+WEB_BOUNDARY_GEOJSON = WEB_DATA_DIR / "norrebro_boundary.geojson"
+WEB_STOPS_GEOJSON    = WEB_DATA_DIR / "norrebro_stops.geojson"
+
 # Integrated data outputs
 INTEGRATED_BUILDINGS = INTEGRATED_DATA_DIR / "norrebro_buildings.gpkg"
 POPULATION_CSV = PROCESSED_DATA_DIR / "norrebro_neighbourhoods_population.csv"
 DWELLINGS_CSV = PROCESSED_DATA_DIR / "norrebro_neighbourhoods_dwellings.csv"
 ENTRANCES_DEMOGRAPHICS_LAYER = "entrances_demographics"
+ENTRANCES_ACCESSIBILITY_LAYER = "entrances_accessibility"
 
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)

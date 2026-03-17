@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nørrebro — Healthy Transit</title>
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+  <!-- Scrollama -->
+  <script src="https://unpkg.com/scrollama@3.2.0/build/scrollama.min.js"></script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Scroll narrative (left column) ─────────────────────────────────── -->
+  <div class="scroll-container">
+    <!-- Steps injected by scroll.js → buildSteps() -->
+  </div>
+
+  <!-- ── Map (right column, sticky) ────────────────────────────────────── -->
+  <div id="map">
+
+    <!-- Interactive tool panel — hidden until step 6 -->
+    <div id="tool-panel" class="hidden">
+      <h3>Explore</h3>
+      <div class="group-buttons">
+        <button class="group-btn active" data-group="aggregate">All groups</button>
+        <button class="group-btn" data-group="working_age">Working-age</button>
+        <button class="group-btn" data-group="elderly">Elderly</button>
+        <button class="group-btn" data-group="children">Children</button>
+      </div>
+      <label class="toggle-row">
+        <input type="checkbox" id="toggle-stops" />
+        Show existing bus stops
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="toggle-interior" checked />
+        Interior segments only
+      </label>
+    </div>
+
+    <!-- Score legend -->
+    <div id="legend">
+      Health benefit score
+      <div class="legend-bar">
+        <span>Low</span>
+        <div class="gradient"></div>
+        <span>High</span>
+      </div>
+    </div>
+
+  </div><!-- #map -->
+
+</div><!-- #app -->
+
+<script type="module">
+  import { initMap } from "./js/map.js";
+  import { buildSteps, initScroll, initToolPanel } from "./js/scroll.js";
+
+  // Build DOM steps from config, then init map and scroll
+  buildSteps();
+  initMap();
+  initScroll();
+  initToolPanel();
+</script>
+
+</body>
+</html>
