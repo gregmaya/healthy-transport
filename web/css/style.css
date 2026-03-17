@@ -37,7 +37,7 @@ html, body {
   grid-column: 1 / -1;
   width: 100vw;
 }
-#map.fullscreen ~ .scroll-container { display: none; }
+.scroll-container.collapsed { display: none; }
 
 /* ── Map container ────────────────────────────────────────────────────────── */
 
@@ -162,6 +162,27 @@ html, body {
   background: var(--blue-3);
   color: #fff;
   border-color: var(--blue-3);
+}
+
+/* Back to narrative button */
+#btn-back-narrative {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--blue-1);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+#btn-back-narrative:hover {
+  border-color: var(--blue-3);
+  color: var(--blue-3);
 }
 
 /* Toggles */

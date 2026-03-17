@@ -1,8 +1,10 @@
-// Data paths (relative to web root — served by python -m http.server from web/)
+// Data paths — relative to project root.
+// Serve with: python -m http.server 8000  (from project root, not from web/)
+// Then open: http://localhost:8000/web/index.html
 export const DATA = {
-  segments: "../data/web/norrebro_bus_segments_scored.geojson",
-  boundary: "../data/web/norrebro_boundary.geojson",
-  stops:    "../data/web/norrebro_stops.geojson",
+  segments: "data/web/norrebro_bus_segments_scored.geojson",
+  boundary: "data/web/norrebro_boundary.geojson",
+  stops:    "data/web/norrebro_stops.geojson",
 };
 
 // Nørrebro bounding box [lng_min, lat_min, lng_max, lat_max]

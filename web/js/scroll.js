@@ -6,6 +6,7 @@ import {
   showScoredNetwork,
   showGapAnalysis,
   enterInteractiveTool,
+  backToNarrative,
   setActiveGroup,
   toggleStops,
   toggleInteriorOnly,
@@ -83,5 +84,11 @@ export function initToolPanel() {
   const interiorChk = document.getElementById("toggle-interior");
   if (interiorChk) {
     interiorChk.addEventListener("change", () => toggleInteriorOnly(interiorChk.checked));
+  }
+
+  // Back to narrative button
+  const backBtn = document.getElementById("btn-back-narrative");
+  if (backBtn) {
+    backBtn.addEventListener("click", backToNarrative);
   }
 }

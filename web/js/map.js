@@ -29,6 +29,8 @@ export function initMap() {
     _addSources();
     _addLayers();
     _addAttribution();
+    // Trigger the initial narrative state so layers are visible from the start
+    showOverview();
   });
 
   return map;
@@ -171,9 +173,22 @@ export function enterInteractiveTool() {
   _setVisibility("segments-aggregate", "visible");
   _setVisibility("stops-layer", "visible");
   document.getElementById("tool-panel").classList.remove("hidden");
-  document.querySelector(".scroll-container").classList.add("hidden");
+  document.querySelector(".scroll-container").classList.add("collapsed");
   document.getElementById("map").classList.add("fullscreen");
   map.resize();
+}
+
+export function backToNarrative() {
+  // Restore the two-column layout
+  document.getElementById("tool-panel").classList.add("hidden");
+  document.querySelector(".scroll-container").classList.remove("collapsed");
+  document.getElementById("map").classList.remove("fullscreen");
+  map.resize();
+  // Scroll narrative back to the top
+  const container = document.querySelector(".scroll-container");
+  container.scrollTo({ top: 0, behavior: "smooth" });
+  // Reset map to overview state
+  showOverview();
 }
 
 // ── Interactive tool: group toggle ──────────────────────────────────────────
