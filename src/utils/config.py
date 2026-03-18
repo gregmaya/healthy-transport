@@ -65,11 +65,11 @@ BBR_LAYER = "bbr_v001:bygning_current"
 BBR_ENHED_LAYER = "bbr_v001:enhed_current"  # Dwelling/unit layer
 BBR_ID_COLUMNS = ["id_lokalId", "id.lokalId", "lokalId", "fid"]
 BBR_KEY_ATTRIBUTES = {
-    "use": "byg021BygningensAnvendelse",   # Building use/class code
-    "area": "byg038SamletBygningsareal",   # Total built area (m²)
-    "year": "byg026Opførelsesår",          # Construction year
-    "municipality": "kommunekode",         # Municipality code
-    "floors": "byg054AntalEtager",         # Number of floors
+    "use": "byg021BygningensAnvendelse",  # Building use/class code
+    "area": "byg038SamletBygningsareal",  # Total built area (m²)
+    "year": "byg026Opførelsesår",  # Construction year
+    "municipality": "kommunekode",  # Municipality code
+    "floors": "byg054AntalEtager",  # Number of floors
     "residential_area": "byg039BygningensSamledeBoligAreal",  # Residential area (m²)
     "commercial_area": "byg040BygningensSamledeErhvervsAreal",  # Commercial area (m²)
     "footprint_area": "byg041BebyggetAreal",  # Built footprint area (m²)
@@ -81,7 +81,7 @@ BBR_ENHED_CSV = BBR_RAW_DIR / "norrebro_bbr_enhed.csv"  # building_id → antal_
 
 # DAR (Danmarks Adresseregister) configuration
 DAR_ENTITIES = {
-    "husnummer": "Husnummer",        # House numbers (links to buildings)
+    "husnummer": "Husnummer",  # House numbers (links to buildings)
     "adressepunkt": "Adressepunkt",  # Address/entrance point coordinates
 }
 DAR_RAW_DIR = RAW_DATA_DIR / "dar"
@@ -135,9 +135,13 @@ HEALTH_OUTPUT = PROCESSED_DATA_DIR / "norrebro_health.csv"
 HEALTH_DANSKERNESSUNDHED_DIR = HEALTH_RAW_DIR / "danskernessundhed"
 HEAT_INPUTS_OUTPUT = PROCESSED_DATA_DIR / "heat_inputs.json"
 HEALTH_SURVEY_BY_AGE_OUTPUT = PROCESSED_DATA_DIR / "health_survey_by_age.csv"
-HEALTH_SURVEY_BY_MUNICIPALITY_OUTPUT = PROCESSED_DATA_DIR / "health_survey_by_municipality.csv"
+HEALTH_SURVEY_BY_MUNICIPALITY_OUTPUT = (
+    PROCESSED_DATA_DIR / "health_survey_by_municipality.csv"
+)
 HEALTH_CAUSES_OF_DEATH_OUTPUT = PROCESSED_DATA_DIR / "health_causes_of_death.csv"
-HEALTH_DEATHS_BY_MUNICIPALITY_OUTPUT = PROCESSED_DATA_DIR / "health_deaths_by_municipality.csv"
+HEALTH_DEATHS_BY_MUNICIPALITY_OUTPUT = (
+    PROCESSED_DATA_DIR / "health_deaths_by_municipality.csv"
+)
 
 # GTFS route type mapping
 GTFS_ROUTE_TYPES = {
@@ -150,7 +154,7 @@ GTFS_ROUTE_TYPES = {
 WEB_DATA_DIR = DATA_DIR / "web"
 WEB_SEGMENTS_GEOJSON = WEB_DATA_DIR / "norrebro_bus_segments_scored.geojson"
 WEB_BOUNDARY_GEOJSON = WEB_DATA_DIR / "norrebro_boundary.geojson"
-WEB_STOPS_GEOJSON    = WEB_DATA_DIR / "norrebro_stops.geojson"
+WEB_STOPS_GEOJSON = WEB_DATA_DIR / "norrebro_stops.geojson"
 
 # Integrated data outputs
 INTEGRATED_BUILDINGS = INTEGRATED_DATA_DIR / "norrebro_buildings.gpkg"
@@ -162,6 +166,6 @@ ENTRANCES_ACCESSIBILITY_LAYER = "entrances_accessibility"
 # Analysis parameters
 WALKING_SPEED = 1.4  # m/s (5 km/h)
 CYCLING_SPEED = 4.17  # m/s (15 km/h)
-MAX_WALK_DISTANCE = 800  # meters (10 min walk)
+MAX_WALK_DISTANCE = 1200  # meters (10 min walk)
 MAX_CYCLE_DISTANCE = 5000  # meters (20 min cycle)
 NETWORK_BUFFER_M = MAX_WALK_DISTANCE  # buffer around boundary for network download

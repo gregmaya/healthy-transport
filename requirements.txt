@@ -10,6 +10,7 @@ rtree>=1.2.0
 networkx>=3.2
 osmnx>=1.9.0
 pandana>=0.7.0
+cityseer>=4.24.0
 
 # Data manipulation
 pandas>=2.1.0
