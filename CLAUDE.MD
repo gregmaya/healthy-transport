@@ -1,8 +1,10 @@
 # Nørrebro Healthy Transport — AI Instructions
 
-Urban health analysis for Nørrebro, Copenhagen. The goal is to identify optimal **bus stop locations** by scoring street segments that lie along existing bus routes for their potential population health benefit, delivered as a scrollytelling web application that hands off to an interactive GIS tool.
+Multi-outcome urban health analysis for Nørrebro, Copenhagen. Four parallel analysis tracks — **Bus Stops**, **Rail**, **Cycling**, **Green Spaces** — each with a scrollytelling narrative sharing one persistent MapLibre map. All tracks expose a two-mode scoring toggle: **Baseline** (pure network geometry, working-age B(d) curve, equal node weight, no population weighting) vs **Contextual** (demographic-weighted by actual residents, with low/mid/high uncertainty bands).
 
 > **Before making any structural changes to the pipeline or output layers, read [`docs/REORIENTATION_BRIEF.md`](docs/REORIENTATION_BRIEF.md).**
+
+> **Before every `git commit`**: update both `PROGRESS.md` and `CLAUDE.MD` to reflect the current project state. A `.git/hooks/pre-commit` hook enforces this by blocking commits where neither file is staged.
 
 ---
 
@@ -18,9 +20,19 @@ These constraints are non-negotiable and must be respected in all pipeline and f
 
 4. **Health benefit model uses population-differentiated curves** — one curve per demographic group (working-age adults 18–64, elderly 65+, children under 15, reduced mobility). The output is a *range* of optimal stop locations, not a single point.
 
-5. **Web app structure is scrollytelling → interactive GIS tool** — built with MapLibre GL JS and Scrollama. The narrative hands off to a fully interactive segment-scored map.
+5. **Web app structure is four-tab scrollytelling → interactive GIS tool** — tabs: Bus Stops / Rail / Cycling / Green Spaces. Each tab is a self-contained scrollytelling narrative built with MapLibre GL JS and Scrollama, sharing one persistent map canvas.
 
 6. **Network distance, not Euclidean** — all distance calculations use graph shortest-path distance through the pedestrian network. Crow-flies distance is never used for scoring.
+
+7. **Two scoring modes — Baseline and Contextual** — Baseline uses the working-age B(d) curve with equal weight per network node (no population count; represents geometric quality of a location). Contextual uses B(d) × age-disaggregated population from `entrances_demographics` with three scenarios (low/mid/high). Both modes are available on all tracks. The toggle is in every interactive panel. The Contextual uncertainty band must be displayed: a scenario rail `[ Low · Mid · High ]` and a popup showing the score range.
+
+8. **Rail tab scores existing entrances only** — no candidate segment analysis along rail routes (unlike bus). Origin = actual entrance location per existing stop. Output: one scored point per entrance. Both Baseline and Contextual modes apply.
+
+9. **Cycling tab is a placeholder** — methodology TBD. Tab structure exists in the UI; no scoring pipeline is defined yet.
+
+10. **Green Spaces scores are on 20m network segments** — consistent with the bus output layer. For each segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (Baseline + Contextual).
+
+11. **Interactive tool defaults** — on entering the interactive panel, the interior filter is applied silently (only well-covered segments shown; no toggle exposed to the user). The "Bus stops" overlay is ON by default. The score mode defaults to Baseline. Overlays for Parks, Demographics (neighbourhood), and Demographics (buildings) are present as disabled placeholders.
 
 ---
 
@@ -72,12 +84,20 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 ### Scored (`data/integrated/` → export to `data/web/`)
 
-| File | Content |
-|---|---|
-| `norrebro_bus_segments_scored.gpkg` | 20m network segments lying on bus routes, with 5–6 score attributes: `score_aggregate`, `score_working_age`, `score_elderly`, `score_children`, `score_reduced_mobility` |
-| `norrebro_bus_segments_scored.geojson` | Web export of scored bus-route segments (WGS84) |
+| File | Content | Status |
+|---|---|---|
+| `norrebro_bus_segments_scored.geojson` | 8,328 bus-route segments, mid-scenario scores + `interior` flag (WGS84, 4.8 MB) | ✅ exists (mid only; re-export after edge-artifact decision) |
+| `norrebro_boundary.geojson` | District boundary (WGS84, 16 KB) | ✅ exists |
+| `norrebro_stops.geojson` | 2,581 bus stops benchmark layer (WGS84, 536 KB) | ✅ exists |
+| `norrebro_bus_segments_scored.gpkg` | Same segments as GeoJSON, GeoPackage format for QGIS | Not yet — pending edge-artifact decision |
+| `norrebro_rail_stops_scored.geojson` | One scored point per metro/train entrance (Baseline + Contextual) | Not yet — blocked on data source |
+| `norrebro_greenspace_access.geojson` | 20m segments scored by network distance to parks/playgrounds | Not yet |
 
-*These files do not exist yet — they are the target output of Phase 3.*
+**Score column naming convention** (all scored layers):
+- `score_{group}_baseline` — working-age B(d) curve, equal node weight, no demographics
+- `score_{group}_low` / `_mid` / `_high` — Contextual, three demographic scenarios
+- `score_{group}_mid_share` — Contextual mid normalised to local population within d_max
+- `score_aggregate_mid` — equal-weighted mean of three group share scores
 
 ---
 
@@ -168,7 +188,18 @@ The scrollytelling narrative connects infrastructure to health prevention across
 3. **Lifestyle factors** (Danskernes Sundhed): Physical activity and BMI by age group
 4. **Economic valuation** (WHO HEAT): Economic health benefit of increased walking/cycling
 
-### Scrollytelling arc (6 steps, Scrollama-driven)
+### Four-tab structure
+
+Each tab is a self-contained scrollytelling narrative (4–6 steps) that hands off to an interactive map panel. Tabs share one MapLibre map canvas.
+
+| Tab | Status | Narrative theme |
+|---|---|---|
+| Bus Stops | Active | Optimal placement; scoring candidate segments; gap analysis vs current provision |
+| Rail | Placeholder | Quality assessment of existing metro/train entrances |
+| Cycling | Placeholder | Infrastructure gap analysis (methodology TBD) |
+| Green Spaces | Placeholder | Network-segment accessibility to parks/playgrounds |
+
+### Bus Stops scrollytelling arc (6 steps — implemented)
 | Step | Title | Map State |
 |---|---|---|
 | 1 | The hidden cost of bad stop placement | Nørrebro overview, existing stops shown |
@@ -182,9 +213,11 @@ The scrollytelling narrative connects infrastructure to health prevention across
 
 ## Immediate Next Steps
 
-1. **Confirm age-disaggregated population availability** — query Statistics Denmark and data.kk.dk for address-level age band data. Define fallback if only census-zone resolution is available.
-2. **Implement and plot the benefit curves** — write `src/health/benefit_curves.py` with `B(d)` parameterised for each demographic group. Validate against literature. Commit as a notebook.
-3. **Reframe pipeline output target** — ensure all in-progress notebooks treat scored 20m segments as the primary deliverable before any further processing work proceeds.
+1. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates all remaining exports.
+2. **Extend bus scoring to Baseline + low/high Contextual** — implement `score_{group}_baseline` (working-age curve, equal node weight) and expand `SCENARIOS = ("low", "mid", "high")` in notebook 11.
+3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
+4. **Implement map scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are currently stubs; implement with `map.flyTo` / layer opacity / data animations.
+5. **Wire chart panel to live data** — `#chart-panel` KPIs and chart blocks are currently static placeholders; connect to computed values from the loaded GeoJSON once score distributions are available.
 
 ---
 

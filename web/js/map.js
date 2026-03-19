@@ -1,4 +1,4 @@
-import { DATA, MAP_INIT, NORREBRO_BOUNDS, SCORE_RAMP, GROUP_RAMPS } from "./config.js";
+import { DATA, MAP_INIT, NORREBRO_BOUNDS, SCORE_RAMP, GROUP_RAMPS, TABS } from "./config.js";
 import { disableScrollLock } from "./state.js";
 
 let map;
@@ -173,15 +173,87 @@ export function showGapAnalysis() {
 export function enterInteractiveTool() {
   _setVisibility("segments-aggregate", "visible");
   _setVisibility("stops-layer", "visible");
+  _removePlaceholderOverlay();
+  toggleInteriorOnly(true); // show only well-covered segments by default
   document.getElementById("tool-panel").classList.remove("hidden");
+  document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
-  // Wait one frame for the fixed layout to apply before resizing the map
   requestAnimationFrame(() => map.resize());
+}
+
+// Non-bus tabs: open the panel but show only the basemap (no data layers)
+export function enterInteractiveToolBasemap() {
+  _hideAllScoreLayers();
+  _setVisibility("stops-layer", "none");
+  _removePlaceholderOverlay();
+  toggleInteriorOnly(true);
+  document.getElementById("tool-panel").classList.remove("hidden");
+  document.getElementById("chart-panel").classList.remove("hidden");
+  document.body.classList.add("is-interactive");
+  requestAnimationFrame(() => map.resize());
+}
+
+// ── Score mode toggle ────────────────────────────────────────────────────────
+
+export function setScoreMode(mode) {
+  // Placeholder: switching between baseline and contextual score columns.
+  // Baseline columns (score_*_baseline) do not yet exist in the GeoJSON —
+  // this will become functional once the scoring pipeline is extended.
+  // For now, mode switching is a no-op on the map but wires cleanly for later.
+  // TODO: update layer paint expressions when baseline columns are available.
+  console.info(`[map] score mode → ${mode} (paint update pending baseline data)`);
+}
+
+// ── Placeholder transitions for Rail / Cycling / Green tabs ──────────────────
+
+let _placeholderOverlay = null;
+
+function _showPlaceholderOverlay(message) {
+  _removePlaceholderOverlay();
+  _placeholderOverlay = document.createElement("div");
+  _placeholderOverlay.id = "placeholder-overlay";
+  _placeholderOverlay.innerHTML = `<p>${message}</p>`;
+  document.getElementById("map").appendChild(_placeholderOverlay);
+}
+
+function _removePlaceholderOverlay() {
+  if (_placeholderOverlay) {
+    _placeholderOverlay.remove();
+    _placeholderOverlay = null;
+  }
+}
+
+export function showRailPlaceholder() {
+  _hideAllScoreLayers();
+  _setVisibility("stops-layer", "none");
+  _removeCurvesPanel();
+  _removeCatchmentRing();
+  _showPlaceholderOverlay("Rail scoring — data pipeline in progress");
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
+}
+
+export function showCyclingPlaceholder() {
+  _hideAllScoreLayers();
+  _setVisibility("stops-layer", "none");
+  _removeCurvesPanel();
+  _removeCatchmentRing();
+  _showPlaceholderOverlay("Cycling analysis — methodology in development");
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
+}
+
+export function showGreenPlaceholder() {
+  _hideAllScoreLayers();
+  _setVisibility("stops-layer", "none");
+  _removeCurvesPanel();
+  _removeCatchmentRing();
+  _showPlaceholderOverlay("Green space scoring — data pipeline in progress");
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
 }
 
 export function backToNarrative() {
   disableScrollLock();
   document.getElementById("tool-panel").classList.add("hidden");
+  document.getElementById("chart-panel").classList.add("hidden");
   document.body.classList.remove("is-interactive");
   requestAnimationFrame(() => {
     map.resize();

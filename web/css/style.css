@@ -14,6 +14,8 @@
   --panel:  #ffffff;
   --radius: 6px;
   --shadow: 0 2px 12px rgba(8, 48, 107, 0.12);
+  --tab-nav-h: 48px;
+  --chart-panel-w: 280px;
 }
 
 html {
@@ -24,6 +26,65 @@ html {
 
 /* Allow window scroll so Scrollama works out of the box */
 body { min-height: 100vh; }
+
+/* ── Tab navigation ───────────────────────────────────────────────────────── */
+
+#tab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 1rem;
+  height: var(--tab-nav-h);
+  background: var(--panel);
+  border-bottom: 1px solid var(--blue-1);
+  box-shadow: 0 1px 6px rgba(8, 48, 107, 0.08);
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  background: var(--blue-0);
+  color: var(--blue-3);
+}
+
+.tab-btn.active {
+  background: var(--blue-3);
+  color: #fff;
+  border-color: var(--blue-3);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  background: #e8edf2;
+  color: var(--muted);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.tab-btn.active .badge {
+  background: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.85);
+}
 
 /* ── Layout — two column, window scrolls ─────────────────────────────────── */
 
@@ -37,19 +98,22 @@ body { min-height: 100vh; }
 
 #map {
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: var(--tab-nav-h);
+  height: calc(100vh - var(--tab-nav-h));
   width: 100%;
   background: var(--blue-0);
   order: 2;
 }
 
-/* Interactive tool: map takes over the full viewport (fixed) */
+/* Interactive tool: map takes over viewport below the tab nav (fixed) */
 body.is-interactive #map {
   position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
+  top: var(--tab-nav-h);
+  left: 0;
+  right: var(--chart-panel-w);
+  bottom: 0;
+  width: auto;
+  height: calc(100vh - var(--tab-nav-h));
   z-index: 500;
 }
 
@@ -113,25 +177,204 @@ body.is-interactive .scroll-container {
 
 #tool-panel {
   position: absolute;
-  top: 1.25rem;
-  left: 1.25rem;
+  top: 1rem;
+  left: 1rem;
   background: var(--panel);
   border-radius: var(--radius);
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   box-shadow: var(--shadow);
   z-index: 600;
-  min-width: 240px;
+  width: 210px;
 }
 
 #tool-panel.hidden { display: none; }
 
-#tool-panel h3 {
-  font-size: 0.8rem;
+/* ── Site title in tab nav ───────────────────────────────────────────────── */
+
+#site-title {
+  margin-left: auto;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue-4);
+  white-space: nowrap;
+  user-select: none;
+}
+
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.1rem;
+  transition: color 0.15s;
+}
+.btn-icon:hover { color: var(--blue-3); }
+
+/* ── Modal backdrop ──────────────────────────────────────────────────────── */
+
+#modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 890;
+  background: rgba(8, 48, 107, 0.18);
+  cursor: pointer;
+}
+
+#modal-backdrop.hidden { display: none; }
+
+/* ── Control sections ────────────────────────────────────────────────────── */
+
+.ctrl-section {
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--blue-1);
+}
+
+.ctrl-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ctrl-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+
+.ctrl-label {
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
-  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
+
+/* ── Info popup (floating overlay) ──────────────────────────────────────── */
+
+.info-popup {
+  display: none;
+  position: fixed;
+  z-index: 900;
+  width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--blue-1);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  box-shadow: 0 4px 24px rgba(8, 48, 107, 0.18);
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.info-popup:not(.hidden) { display: block; }
+
+.info-popup p + p { margin-top: 0.45rem; }
+
+.info-popup strong { color: var(--text); }
+
+.curves-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 0.6rem;
+  overflow: visible;
+}
+
+/* ── Mode options (radio cards) ──────────────────────────────────────────── */
+
+.mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+}
+
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.mode-option input[type="radio"] {
+  margin-top: 0.2rem;
+  accent-color: var(--blue-3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.mode-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mode-desc {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+
+/* Scenario rail (Low · Mid · High) — shown in Contextual mode only */
+.scenario-rail {
+  margin-bottom: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--blue-0);
+  border-radius: var(--radius);
+  border: 1px solid var(--blue-1);
+}
+
+.scenario-rail.hidden { display: none; }
+
+.scenario-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.scenario-buttons {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.scenario-btn {
+  flex: 1;
+  padding: 0.25rem 0.4rem;
+  border: 1.5px solid var(--blue-1);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.scenario-btn.active {
+  background: var(--blue-2);
+  color: #fff;
+  border-color: var(--blue-2);
+}
+
 
 /* Group toggle buttons */
 .group-buttons {
@@ -166,8 +409,8 @@ body.is-interactive .scroll-container {
   align-items: center;
   gap: 0.35rem;
   width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.45rem 0.75rem;
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.6rem;
   background: transparent;
   border: 1.5px solid var(--blue-1);
   border-radius: 4px;
@@ -198,6 +441,13 @@ body.is-interactive .scroll-container {
   height: 15px;
   cursor: pointer;
 }
+
+.toggle-row--disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.toggle-row--disabled input { cursor: default; }
 
 /* ── Benefit curves overlay (step 3) ─────────────────────────────────────── */
 
@@ -274,15 +524,128 @@ body.is-interactive .scroll-container {
 }
 .cta-explore:hover { background: var(--blue-4); }
 
+/* ── Placeholder overlay (Rail / Cycling / Green coming-soon state) ──────── */
+
+#placeholder-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.75rem;
+  box-shadow: var(--shadow);
+  z-index: 50;
+  text-align: center;
+  pointer-events: none;
+}
+
+#placeholder-overlay p {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Chart panel (right, interactive mode only) ──────────────────────────── */
+
+#chart-panel {
+  display: none;
+  width: var(--chart-panel-w);
+  background: var(--panel);
+  border-left: 1px solid var(--blue-1);
+  overflow-y: auto;
+}
+
+#chart-panel:not(.hidden) { display: block; }
+
+body.is-interactive #chart-panel:not(.hidden) {
+  position: fixed;
+  top: var(--tab-nav-h);
+  right: 0;
+  bottom: 0;
+  width: var(--chart-panel-w);
+  z-index: 500;
+}
+
+.chart-panel-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--blue-1);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--blue-1);
+}
+
+.kpi-cell {
+  padding: 0.85rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.kpi-cell + .kpi-cell {
+  border-left: 1px solid var(--blue-1);
+}
+
+.kpi-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--blue-3);
+  line-height: 1;
+}
+
+.kpi-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.chart-block {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--blue-1);
+}
+
+.chart-block-header {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chart-placeholder {
+  padding: 1.5rem 1rem;
+  background: var(--blue-0);
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
+  #tab-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 0.15rem;
+    padding: 0 0.5rem;
+  }
   #app {
     grid-template-columns: 1fr;
   }
   #map {
     order: 1;
-    height: 50vh;
+    height: calc(50vh - var(--tab-nav-h));
   }
   .scroll-container {
     order: 2;

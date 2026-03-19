@@ -16,6 +16,16 @@
 </head>
 <body>
 
+<!-- ── Top nav ──────────────────────────────────────────────────────────────── -->
+<nav id="tab-nav">
+  <button class="tab-btn active" data-tab="bus">Bus Stops</button>
+  <button class="tab-btn" data-tab="rail">Rail <span class="badge">coming soon</span></button>
+  <button class="tab-btn" data-tab="cycling">Cycling <span class="badge">coming soon</span></button>
+  <button class="tab-btn" data-tab="green">Green Spaces <span class="badge">coming soon</span></button>
+
+  <span id="site-title">Healthy Transport</span>
+</nav>
+
 <div id="app">
 
   <!-- ── Scroll narrative (left column) ─────────────────────────────────── -->
@@ -23,28 +33,133 @@
     <!-- Steps injected by scroll.js → buildSteps() -->
   </div>
 
-  <!-- ── Map (right column, sticky) ────────────────────────────────────── -->
+  <!-- ── Map (centre, sticky) ───────────────────────────────────────────── -->
   <div id="map">
 
-    <!-- Interactive tool panel — hidden until step 6 -->
+    <!-- Left control panel — hidden until "Explore" button clicked -->
     <div id="tool-panel" class="hidden">
-      <h3>Explore</h3>
-      <div class="group-buttons">
-        <button class="group-btn active" data-group="aggregate">All groups</button>
-        <button class="group-btn" data-group="working_age">Working-age</button>
-        <button class="group-btn" data-group="elderly">Elderly</button>
-        <button class="group-btn" data-group="children">Children</button>
+
+      <!-- ── SCORE MODE ─────────────────────────────────────────────────── -->
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">
+          <span class="ctrl-label">Score mode</span>
+          <button class="btn-icon" data-info="score" aria-label="About score modes">ⓘ</button>
+        </div>
+        <div class="info-popup hidden" id="info-popup-score">
+          <p><strong>Baseline</strong> — evaluates the geometric quality of a location using the working-age walk curve. No population data. Equal weight per network node. Useful for assessing long-term infrastructure regardless of who lives there today.</p>
+          <p><strong>Contextual</strong> — weights each location by the actual age-disaggregated population living nearby (modelled estimates). Scores reflect today's residents. Low/High show the uncertainty range of the demographic model.</p>
+        </div>
+
+        <div class="mode-options">
+          <label class="mode-option">
+            <input type="radio" name="score-mode" value="baseline" checked />
+            <div class="mode-card">
+              <span class="mode-name">Baseline</span>
+              <span class="mode-desc">Network quality, no population weighting</span>
+            </div>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="score-mode" value="contextual" />
+            <div class="mode-card">
+              <span class="mode-name">Contextual</span>
+              <span class="mode-desc">Weighted by current residents</span>
+            </div>
+          </label>
+        </div>
+
+        <!-- Scenario rail — visible in Contextual mode only -->
+        <div class="scenario-rail hidden" id="scenario-rail">
+          <span class="scenario-label">Population estimate</span>
+          <div class="scenario-buttons">
+            <button class="scenario-btn" data-scenario="low">Low</button>
+            <button class="scenario-btn active" data-scenario="mid">Mid</button>
+            <button class="scenario-btn" data-scenario="high">High</button>
+          </div>
+        </div>
       </div>
-      <label class="toggle-row">
-        <input type="checkbox" id="toggle-stops" />
-        Show existing bus stops
-      </label>
-      <label class="toggle-row">
-        <input type="checkbox" id="toggle-interior" checked />
-        Interior segments only
-      </label>
-      <button id="btn-back-narrative">← Back to narrative</button>
-    </div>
+
+      <!-- ── DEMOGRAPHIC GROUP ───────────────────────────────────────────── -->
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">
+          <span class="ctrl-label">Demographic group</span>
+          <button class="btn-icon" data-info="group" aria-label="About demographic groups">ⓘ</button>
+        </div>
+        <div class="info-popup hidden" id="info-popup-group">
+          <p>Each group uses a different benefit curve — the optimal walk distance shifts with age and mobility. Scores reflect how much health benefit a stop at that location would generate for people in that group.</p>
+          <p>Age data is interpolated from neighbourhood census zones to individual buildings.</p>
+          <svg class="curves-svg" viewBox="0 0 300 170" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(30,10)">
+              <line x1="0" y1="120" x2="260" y2="120" stroke="#aaa" stroke-width="1"/>
+              <line x1="0" y1="0"   x2="0"   y2="120" stroke="#aaa" stroke-width="1"/>
+              <text x="-6" y="124" font-size="7" fill="#999" text-anchor="middle">0</text>
+              <text x="65"  y="133" font-size="7" fill="#999" text-anchor="middle">300m</text>
+              <text x="130" y="133" font-size="7" fill="#999" text-anchor="middle">600m</text>
+              <text x="195" y="133" font-size="7" fill="#999" text-anchor="middle">900m</text>
+              <text x="260" y="133" font-size="7" fill="#999" text-anchor="middle">1 200m</text>
+              <text x="-20" y="5" font-size="7" fill="#999" text-anchor="middle" transform="rotate(-90,-20,60)">Benefit</text>
+              <!-- Working-age (peaks ~500m, d_max 1200m) -->
+              <path d="M0,117 C30,115 50,100 65,60 C80,20 95,5 108,5 C121,5 136,20 152,60 C175,110 200,117 260,117"
+                    fill="none" stroke="#2171b5" stroke-width="2"/>
+              <text x="112" y="2" font-size="7" fill="#2171b5" text-anchor="middle">~500m</text>
+              <!-- Elderly (peaks ~300m, d_max 700m) -->
+              <path d="M0,115 C20,105 40,60 65,10 C80,2 90,2 100,10 C120,40 145,105 152,117 C200,117 260,117 260,117"
+                    fill="none" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
+              <text x="82" y="2" font-size="7" fill="#6baed6" text-anchor="middle">~300m</text>
+              <!-- Children (peaks ~250m, d_max 600m) -->
+              <path d="M0,116 C15,108 35,65 55,12 C65,3 75,3 85,12 C100,40 120,110 130,117 C200,117 260,117 260,117"
+                    fill="none" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
+              <text x="65" y="10" font-size="7" fill="#888" text-anchor="middle">~250m</text>
+              <!-- Legend -->
+              <line x1="0"   y1="150" x2="16"  y2="150" stroke="#2171b5" stroke-width="2"/>
+              <text x="19"  y="153" font-size="7.5" fill="#333">Working-age (15–64)</text>
+              <line x1="0"   y1="161" x2="16"  y2="161" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
+              <text x="19"  y="164" font-size="7.5" fill="#333">Elderly (65+)</text>
+              <line x1="120" y1="150" x2="136" y2="150" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
+              <text x="139" y="153" font-size="7.5" fill="#333">Children (0–14)</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="group-buttons">
+          <button class="group-btn active" data-group="aggregate">All</button>
+          <button class="group-btn" data-group="working_age">Working-age</button>
+          <button class="group-btn" data-group="elderly">Elderly</button>
+          <button class="group-btn" data-group="children">Children</button>
+        </div>
+      </div>
+
+      <!-- ── OVERLAYS ────────────────────────────────────────────────────── -->
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">
+          <span class="ctrl-label">Overlays</span>
+          <button class="btn-icon" data-info="overlays" aria-label="About overlays">ⓘ</button>
+        </div>
+        <div class="info-popup hidden" id="info-popup-overlays">
+          <p><strong>Bus stops</strong> — existing stop locations from the national GTFS feed. Compare against the scored segments to see where current provision aligns with — or diverges from — high-benefit zones.</p>
+          <p><strong>Parks &amp; green spaces</strong> — park and playground polygons from the municipality open data.</p>
+          <p><strong>Demographics</strong> — age group estimates per neighbourhood (census zones) and per building (modelled interpolation).</p>
+        </div>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="toggle-stops" checked />
+          Bus stops
+        </label>
+        <label class="toggle-row toggle-row--disabled">
+          <input type="checkbox" id="toggle-parks" disabled />
+          Parks &amp; green spaces <span class="badge">coming soon</span>
+        </label>
+        <label class="toggle-row toggle-row--disabled">
+          <input type="checkbox" id="toggle-demographics-nb" disabled />
+          Demographics — neighbourhood <span class="badge">coming soon</span>
+        </label>
+        <label class="toggle-row toggle-row--disabled">
+          <input type="checkbox" id="toggle-demographics-bldg" disabled />
+          Demographics — buildings <span class="badge">coming soon</span>
+        </label>
+      </div>
+
+      <button id="btn-back-narrative">← Back</button>
+    </div><!-- #tool-panel -->
 
     <!-- Score legend -->
     <div id="legend">
@@ -58,18 +173,59 @@
 
   </div><!-- #map -->
 
+  <!-- ── Chart panel (right, shown in interactive mode) ─────────────────── -->
+  <div id="chart-panel" class="hidden">
+
+    <div class="chart-panel-header">
+      <span>Analysis</span>
+    </div>
+
+    <!-- KPI row -->
+    <div class="kpi-grid">
+      <div class="kpi-cell">
+        <span class="kpi-value" id="kpi-segments">8,328</span>
+        <span class="kpi-label">Scored segments</span>
+      </div>
+      <div class="kpi-cell">
+        <span class="kpi-value" id="kpi-population">356k</span>
+        <span class="kpi-label">Population in district</span>
+      </div>
+    </div>
+
+    <!-- Chart placeholders -->
+    <div class="chart-block">
+      <div class="chart-block-header">Score distribution</div>
+      <div class="chart-placeholder">Chart coming soon</div>
+    </div>
+
+    <div class="chart-block">
+      <div class="chart-block-header">Coverage by group</div>
+      <div class="chart-placeholder">Chart coming soon</div>
+    </div>
+
+    <div class="chart-block">
+      <div class="chart-block-header">Gap analysis</div>
+      <div class="chart-placeholder">Chart coming soon</div>
+    </div>
+
+  </div><!-- #chart-panel -->
+
 </div><!-- #app -->
 
 <script type="module">
   import { initMap } from "./js/map.js";
-  import { buildSteps, initScroll, initToolPanel } from "./js/scroll.js";
+  import { buildSteps, initScroll, initTabs, initToolPanel } from "./js/scroll.js";
+  import { TABS } from "./js/config.js";
 
-  // Build DOM steps from config, then init map and scroll
-  buildSteps();
+  const busTab = TABS.find(t => t.id === "bus");
+  buildSteps(busTab.steps);
   initMap();
-  initScroll();
+  initScroll(busTab.steps);
+  initTabs();
   initToolPanel();
 </script>
+
+<div id="modal-backdrop" class="hidden"></div>
 
 </body>
 </html>
