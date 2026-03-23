@@ -306,46 +306,46 @@ body.is-interactive .scroll-container {
   overflow: visible;
 }
 
-/* ── Mode options (radio cards) ──────────────────────────────────────────── */
+/* ── Score mode pill toggle ──────────────────────────────────────────────── */
 
-.mode-options {
+.mode-toggle {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  border: 1px solid var(--blue-1);
+  border-radius: 4px;
+  overflow: hidden;
   margin-bottom: 0.4rem;
 }
 
-.mode-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
+.mode-btn {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
   cursor: pointer;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
 }
 
-.mode-option input[type="radio"] {
-  margin-top: 0.2rem;
-  accent-color: var(--blue-3);
-  cursor: pointer;
-  flex-shrink: 0;
+.mode-btn + .mode-btn {
+  border-left: 1px solid var(--blue-1);
 }
 
-.mode-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+.mode-btn.active {
+  background: var(--blue-3);
+  color: #fff;
 }
 
-.mode-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.mode-desc {
+.mode-active-desc {
   font-size: 0.72rem;
   color: var(--muted);
   line-height: 1.35;
+  margin: 0 0 0.3rem;
 }
+
+.mode-active-desc.hidden { display: none; }
 
 
 /* Scenario rail (Low · Mid · High) — shown in Contextual mode only */
@@ -685,6 +685,72 @@ body.is-interactive #chart-panel:not(.hidden) {
   color: var(--muted);
   font-style: italic;
   margin: 0.3rem 0 0;
+}
+
+/* ── Temp heatmap threshold control ─────────────────────────────────────── */
+
+.temp-ctrl {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--blue-1);
+}
+
+.temp-ctrl-label {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.temp-ctrl input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue-3);
+  cursor: pointer;
+}
+
+/* ── Score distribution bars ─────────────────────────────────────────────── */
+
+.dist-row {
+  display: grid;
+  grid-template-columns: 76px 1fr 26px;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.22rem;
+}
+
+.dist-label {
+  font-size: 0.67rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dist-track {
+  height: 6px;
+  background: var(--blue-0);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dist-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.dist-pct {
+  font-size: 0.67rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ── Population stat (below scatter) ──────────────────────────────────────── */
+
+.pop-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 /* ── Mobile ───────────────────────────────────────────────────────────────── */

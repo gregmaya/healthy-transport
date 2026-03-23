@@ -1,6 +1,6 @@
 import { TABS } from "./config.js";
 import { enableScrollLock, disableScrollLock } from "./state.js";
-import { initScatter, updateScatterGroup } from "./scatter.js";
+import { initScatter, updateScatterGroup, setScatterSelectCallback, highlightScatterStop } from "./scatter.js";
 import {
   showOverview,
   showCatchmentRing,
@@ -15,6 +15,9 @@ import {
   toggleDemographics,
   getStopFeatures,
   setScoreMode,
+  setStopSelectCallback,
+  highlightMapStop,
+  setHeatmapYellowThreshold,
   showRailPlaceholder,
   showCyclingPlaceholder,
   showGreenPlaceholder,
@@ -205,10 +208,31 @@ export function initToolPanel() {
     bldgChk.addEventListener("change", () => toggleDemographics(bldgChk.checked));
   }
 
-  // Score mode toggle (Baseline / Contextual radio inputs)
-  document.querySelectorAll("input[name='score-mode']").forEach((radio) => {
-    radio.addEventListener("change", () => setScoreMode(radio.value));
+  // Score mode pill toggle
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const mode = btn.dataset.mode;
+      document.querySelectorAll(".mode-active-desc").forEach(d => d.classList.add("hidden"));
+      document.getElementById(`mode-desc-${mode}`)?.classList.remove("hidden");
+      setScoreMode(mode);
+    });
   });
+
+  // Cross-highlight: map stop click ↔ scatter dot click
+  setStopSelectCallback(id => highlightScatterStop(id));
+  setScatterSelectCallback(id => highlightMapStop(id));
+
+  // Temp: heatmap yellow threshold slider
+  const yellowSlider = document.getElementById("yellow-thresh");
+  const yellowValEl  = document.getElementById("yellow-val");
+  if (yellowSlider) {
+    yellowSlider.addEventListener("input", () => {
+      yellowValEl.textContent = yellowSlider.value;
+      setHeatmapYellowThreshold(+yellowSlider.value);
+    });
+  }
 
   // CTA button inside the last narrative step (wired initially; re-wired on tab switch)
   const enterBtn = document.getElementById("btn-enter-tool");

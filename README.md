@@ -1,3 +1,8 @@
+_to test locally run_
+> bash scripts/dev.sh
+
+Then open http://localhost:8000. The script copies web/ + data/web/*.geojson into a dist/ folder and serves it from there
+
 # Healthy Transport - Nørrebro MVP
 
 Urban health analysis for Copenhagen's Nørrebro neighbourhood integrating multiple official data sources.

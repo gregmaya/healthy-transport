@@ -2,8 +2,18 @@
  * Baseline vs Contextual scatter plot for the bus analysis panel.
  * X axis: always score_baseline (network coverage, no demographics)
  * Y axis: contextual score for the currently selected demographic group
- * Colour: aggregate contextual score (score_aggregate_mid)
+ * Colour: selected group's contextual score (matches Y axis)
  */
+
+import { getRampDomain } from "./map.js";
+
+const BANDS = [
+  { lo: 0,    hi: 0.15,     label: "Poorly placed" },
+  { lo: 0.15, hi: 0.30,     label: "Limited reach"  },
+  { lo: 0.30, hi: 0.45,     label: "Moderate"        },
+  { lo: 0.45, hi: 0.60,     label: "Well placed"     },
+  { lo: 0.60, hi: Infinity, label: "Optimal"          },
+];
 
 const GROUP_Y_FIELD = {
   aggregate:   "score_aggregate_mid",
@@ -19,7 +29,7 @@ const GROUP_LABEL = {
   children:    "Children",
 };
 
-// Design palette — matches map.js (orange=low, blue=high)
+// Design palette — matches map.js _buildRamp (orange=low, blue=high)
 const STOPS = [
   [0.0,  0xff, 0x67, 0x00],  // pumpkin-spice — low
   [0.25, 0xeb, 0xeb, 0xeb],  // platinum
@@ -41,6 +51,13 @@ function scoreColor(val) {
   return "rgb(0,78,152)";
 }
 
+/** Normalize a raw score value to [0,1] using the map's dynamic domain. */
+function _normalize(val) {
+  const { lo, hi } = getRampDomain();
+  if (lo == null || hi === lo) return val;
+  return Math.max(0, Math.min(1, (val - lo) / (hi - lo)));
+}
+
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, attrs = {}, text = null) {
   const e = document.createElementNS(NS, tag);
@@ -58,17 +75,62 @@ function fmt(v) { return (v * 100).toFixed(0) + "%"; }
 
 let _features = null;
 let _currentGroup = "aggregate";
+let _dotElements = new Map();   // stop_id → <circle> element
+let _selectedId   = null;
+let _scatterSelectCallback = null;
+
+export function setScatterSelectCallback(fn) { _scatterSelectCallback = fn; }
+
+export function highlightScatterStop(stopId) {
+  _selectedId = stopId != null ? String(stopId) : null;
+  _dotElements.forEach((circ, id) => {
+    if (id === _selectedId) {
+      circ.setAttribute("r", 4.5);
+      circ.setAttribute("stroke", "#ffffff");
+      circ.setAttribute("stroke-width", 1.5);
+    } else {
+      circ.setAttribute("r", 2.2);
+      circ.setAttribute("stroke", "none");
+      circ.setAttribute("stroke-width", 0);
+    }
+  });
+}
+
+function drawDistribution(group) {
+  const container = document.getElementById("distribution-container");
+  if (!container || !_features?.length) return;
+
+  const yKey   = GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate;
+  const yVals  = _features.map(f => +(f.properties[yKey]) || 0);
+  const n      = yVals.length;
+  const counts = BANDS.map(b => yVals.filter(v => v >= b.lo && v < b.hi).length);
+  const maxCnt = Math.max(...counts, 1);
+
+  container.innerHTML = BANDS.map((b, i) => {
+    const pct   = Math.round((counts[i] / n) * 100);
+    const mid   = b.hi === Infinity ? 0.75 : (b.lo + b.hi) / 2;
+    const color = scoreColor(_normalize(mid));
+    const barW  = Math.round((counts[i] / maxCnt) * 100);
+    return `<div class="dist-row">
+      <span class="dist-label" title="${b.lo === 0 ? "0" : b.lo.toFixed(2)}–${b.hi === Infinity ? "1.0+" : b.hi.toFixed(2)}">${b.label}</span>
+      <div class="dist-track"><div class="dist-fill" style="width:${barW}%;background:${color}"></div></div>
+      <span class="dist-pct">${pct}%</span>
+    </div>`;
+  }).join("");
+}
 
 function drawScatter(group) {
   const container = document.getElementById("scatter-container");
   if (!container || !_features?.length) return;
 
+  _dotElements.clear();
+
   const yKey   = GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate;
   const yLabel = GROUP_LABEL[group]   || "All groups";
   const props  = _features.map(f => f.properties);
-  const xVals  = props.map(p => +(p["score_baseline"]) || 0);
-  const yVals  = props.map(p => +(p[yKey]) || 0);
-  const aggVals = props.map(p => +(p["score_aggregate_mid"]) || 0);
+  const xVals   = props.map(p => +(p["score_baseline"]) || 0);
+  const yVals   = props.map(p => +(p[yKey]) || 0);
+  const aggVals = props.map(p => +(p["score_aggregate_mid"]) || 0); // z-order only
 
   const xDataMin = Math.min(...xVals), xDataMax = Math.max(...xVals);
   const yDataMin = Math.min(...yVals), yDataMax = Math.max(...yVals);
@@ -118,13 +180,28 @@ function drawScatter(group) {
   const order = props.map((_, i) => i).sort((a, b) => aggVals[a] - aggVals[b]);
   const g = el("g", {});
   for (const i of order) {
+    const stopId = String(_features[i].properties.stop_id ?? "");
+    const isSelected = stopId === _selectedId;
     const circle = el("circle", {
       cx: px(xVals[i]), cy: py(yVals[i]),
-      r: 2.2, fill: scoreColor(aggVals[i]), "fill-opacity": 0.65, stroke: "none",
+      r: isSelected ? 4.5 : 2.2,
+      fill: scoreColor(_normalize(yVals[i])),
+      "fill-opacity": 0.75,
+      stroke: isSelected ? "#ffffff" : "none",
+      "stroke-width": isSelected ? 1.5 : 0,
     });
+    circle.style.cursor = "pointer";
     const title = document.createElementNS(NS, "title");
-    title.textContent = `Baseline: ${fmt(xVals[i])}  ${yLabel}: ${fmt(yVals[i])}  Agg: ${fmt(aggVals[i])}`;
+    title.textContent = `Baseline: ${fmt(xVals[i])}  ${yLabel}: ${fmt(yVals[i])}`;
     circle.appendChild(title);
+    circle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const newId = _selectedId === stopId ? null : stopId;
+      _selectedId = newId;
+      highlightScatterStop(newId);
+      if (_scatterSelectCallback) _scatterSelectCallback(newId);
+    });
+    _dotElements.set(stopId, circle);
     g.appendChild(circle);
   }
   svg.appendChild(g);
@@ -132,11 +209,20 @@ function drawScatter(group) {
 }
 
 export function initScatter(features) {
-  _features = features;
+  const seen = new Set();
+  _features = features.filter(f => {
+    if (f.properties.context) return false;           // exclude context stops outside district
+    const key = f.properties.stop_id ?? `${f.geometry.coordinates}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   drawScatter(_currentGroup);
+  drawDistribution(_currentGroup);
 }
 
 export function updateScatterGroup(group) {
   _currentGroup = group;
   drawScatter(group);
+  drawDistribution(group);
 }

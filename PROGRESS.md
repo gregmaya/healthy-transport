@@ -196,24 +196,27 @@ Output folder: `data/integrated/`
 - [x] Map sources and layers registered (boundary, segments, stops, basemap)
 - [x] Aggregate + per-group colour ramps defined (`SCORE_RAMP`, `GROUP_RAMPS`)
 - [x] Tab nav (Bus / Rail / Cycling / Green Spaces) — Rail/Cycling/Green show "coming soon" badge
-- [x] Score-mode toggle (Baseline / Contextual radio inputs) + scenario rail (Low · Mid · High, Contextual only) in tool panel
+- [x] **Score-mode pill toggle** — Contextual/Baseline pill buttons (replaced radio inputs); active mode's short description shown inline; Contextual is default on tool entry; ⓘ popup updated with clearer copy
 - [x] Placeholder step arrays for Rail, Cycling, Green Spaces tabs
 - [x] `switchTab()` — tears down Scrollama, rebuilds steps, re-inits scroll
 - [x] **Site title** — "Healthy Transport" wordmark in tab nav (rightmost, uppercase, `--blue-4`)
 - [x] **Scroll endpoint** — Bus step 6 (`showGapAnalysis`) no longer auto-fires interactive tool; only "Explore the map →" button triggers it; `enterInteractiveTool` removed from `TRANSITION_FNS`
 - [x] **Non-bus interactive panels** — `enterInteractiveToolBasemap()` hides all data layers; only basemap + boundary visible for Rail / Cycling / Green tabs
-- [x] **Tool panel redesign** — three ctrl-sections (Score Mode, Demographic Group, Overlays), each with ⓘ button; Baseline listed first with inline description; mode selection via radio inputs; panel width 210px
+- [x] **Tool panel** — three ctrl-sections (Score Mode, Demographic Group, Overlays), each with ⓘ button; all infobox texts updated; panel width 210px
 - [x] **Floating info popups** — per-category ⓘ buttons open fixed-position overlays to the right of the tool panel; `#modal-backdrop` blocks other interactions; backdrop click closes popup
 - [x] **Benefit curves in demographic popup** — annotated SVG with all three B(d) curves (Working-age, Elderly, Children) embedded in the Demographic Group info popup
-- [x] **Overlays redesign** — "Bus stops" ON by default; "Reliable data only" removed (interior filter applied silently on enter); Parks placeholder disabled; Demographics overlay wired to heatmap
-- [x] **Right-hand chart panel** (`#chart-panel`) — appears in interactive mode only (fixed, right side, 280px); KPI grid (1,699 scored segments, 356k population); Baseline vs Contextual scatter plot (SVG, reactive to group selection)
+- [x] **Overlays redesign** — "Bus stops" ON by default; interior filter applied silently on enter; Parks placeholder disabled; Demographics overlay wired to heatmap
+- [x] **Map bounds & zoom** — `minZoom: 11`, `maxZoom: 18`, `maxBounds` ~20km box around Nørrebro
+- [x] **Right-hand chart panel** (`#chart-panel`) — appears in interactive mode only (fixed, right side, 280px)
+- [x] **Score distribution card** — top of chart panel; 5 score bands (0–0.15 "Poorly placed" → 0.60+ "Optimal") with colour-matched horizontal bars and %; reactive to demographic group
+- [x] **Scatter plot** — SVG, vanilla JS; X=`score_baseline`, Y=selected group; dots domain-normalised to match map ramp; context stops excluded; deduplication by `stop_id`; click on dot ↔ map stop mutually highlights
 - [x] **Map layout in interactive mode** — map fixed with `right: var(--chart-panel-w)` to accommodate chart panel
 - [x] **Dynamic color ramp** — domain computed from actual data range (0.117–0.530); orange=low (#ff6700), blue=high (#004e98); applied to segments, stops, and scatter plot dots
 - [x] **Baseline mode** — score mode toggle hides demographic group selector; segments/stops recolor to `score_baseline`; legend title switches to "Network coverage"
 - [x] **Contextual mode** — group selector visible; segments/stops recolor to selected group's `score_*_mid_share`; legend title shows "Health benefit score"
-- [x] **Demographics heatmap** — B&W color scheme, opacity 0.60, zoom-independent (exponential base-2 radius), no slider; wired to "Demographics" checkbox
-- [x] **Scatter plot** — SVG, vanilla JS; X axis fixed to `score_baseline` ("Network coverage"), Y axis follows selected demographic group; dots colored by aggregate contextual score
-- [x] **Group buttons wired to scatter** — selecting a group updates both map layer colors and scatter Y axis simultaneously
+- [x] **Demographics heatmap** — grey → dark → golden-yellow at density core (≥0.88); opacity 0.60, zoom-independent radius; temp threshold slider in Overlays panel for tuning
+- [x] **Context stops** — stops outside district boundary (`context=true`) not clickable, excluded from scatter/distribution
+- [x] **Population stat** — "356k population in district" moved below scatter; "Scored segments" KPI removed
 - [ ] **Map transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations
 - [ ] Wire scenario rail to `score_{group}_{scenario}` columns (low/high not yet computed)
 - [ ] Segment hover/click popup: mid score + [low, high] range

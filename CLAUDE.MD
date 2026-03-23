@@ -221,6 +221,8 @@ Each tab is a self-contained scrollytelling narrative (4–6 steps) that hands o
 3. **Implement map scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are currently stubs; implement with `map.flyTo` / layer opacity / data animations.
 4. **Segment hover/click popup** — show mid score + [low, high] range for the active demographic group in interactive mode.
 5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
+6. **Finalise demographics heatmap accent** — temp threshold slider in Overlays panel; once user confirms the right value, hardcode and remove slider.
+7. **Chart panel — further stats** — population stat block below scatter is a placeholder; build out additional contextual metrics (e.g. avg score by group, gap count).
 
 ---
 

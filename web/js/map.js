@@ -9,6 +9,7 @@ let _dynamicRampApplied = false;
 let _activeDemoFields = null;
 let _rampLo = null;
 let _rampHi = null;
+let _stopSelectCallback = null;
 
 const STOP_SCORE_FIELD = {
   baseline:    "score_baseline",
@@ -44,6 +45,9 @@ export function initMap() {
     },
     center: MAP_INIT.center,
     zoom: MAP_INIT.zoom,
+    minZoom: 11,
+    maxZoom: 18,
+    maxBounds: [[12.46, 55.64], [12.64, 55.74]],
     attributionControl: false,
   });
 
@@ -123,11 +127,11 @@ function _addLayers() {
       "heatmap-opacity": 0.60,
       "heatmap-color": [
         "interpolate", ["linear"], ["heatmap-density"],
-        0,   "rgba(255,255,255,0)",
-        0.2, "rgba(180,180,180,0.6)",
-        0.5, "rgba(90,90,90,0.8)",
-        0.8, "rgba(20,20,20,0.9)",
-        1.0, "rgba(0,0,0,1)",
+        0,    "rgba(255,255,255,0)",
+        0.25, "rgba(160,160,160,0.6)",
+        0.7,  "rgba(40,40,40,0.88)",
+        0.88, "rgba(20,18,0,0.96)",
+        1.0,  "rgba(215,170,0,1)",
       ],
     },
   });
@@ -190,6 +194,20 @@ function _addLayers() {
       "circle-opacity":      ["case", ["get", "context"], 0.5, 0.9],
     },
   });
+
+  // Selection ring — always rendered, controlled by filter (empty → nothing shown)
+  map.addLayer({
+    id: "stops-highlight",
+    type: "circle",
+    source: "stops-src",
+    filter: ["==", ["get", "stop_id"], ""],
+    paint: {
+      "circle-radius": 10,
+      "circle-color": "rgba(0,0,0,0)",
+      "circle-stroke-width": 2.5,
+      "circle-stroke-color": "#ffffff",
+    },
+  });
 }
 
 function _addPopups() {
@@ -224,15 +242,17 @@ function _addPopups() {
     map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
   }
 
-  // Click popup on existing bus stops
+  // Click popup on existing bus stops (context stops outside district are not interactive)
   map.on("click", "stops-layer", (e) => {
     const p = e.features[0].properties;
+    if (p.context) return;
+    highlightMapStop(p.stop_id);
+    if (_stopSelectCallback) _stopSelectCallback(p.stop_id);
     const pct = (v) => (v != null && !isNaN(+v) ? (+v * 100).toFixed(0) + "%" : "—");
     new maplibregl.Popup({ maxWidth: "240px" })
       .setLngLat(e.lngLat)
       .setHTML(`
         <strong>${p.stop_name || "Bus stop"}</strong><br>
-        <span style="color:#666;font-size:0.85em;text-transform:capitalize">${p.transport_mode || ""}</span><br>
         ${p.route_names ? `<span style="font-size:0.85em">Routes: ${p.route_names}</span><br>` : ""}
         ${p.score_aggregate_mid != null ? `
         <br><table style="font-size:0.9em;border-collapse:collapse;width:100%">
@@ -308,6 +328,7 @@ export function enterInteractiveTool() {
   document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
   requestAnimationFrame(() => map.resize());
+  setScoreMode("contextual");
 }
 
 // Non-bus tabs: open the panel but show only the basemap (no data layers)
@@ -507,6 +528,38 @@ function _updateLegend() {
   const maxEl = document.getElementById("legend-max");
   if (minEl) minEl.textContent = "Low";
   if (maxEl) maxEl.textContent = "High";
+}
+
+// ── Cross-component API ───────────────────────────────────────────────────────
+
+/** Returns the data-driven ramp domain so scatter.js can use identical colors. */
+export function getRampDomain() { return { lo: _rampLo, hi: _rampHi }; }
+
+/** Temporary: dial in the near-black → yellow transition in the demographics heatmap. */
+export function setHeatmapYellowThreshold(t) {
+  if (!map.getLayer("demographics-heatmap")) return;
+  const hi = Math.max(0.71, Math.min(0.99, +t));
+  map.setPaintProperty("demographics-heatmap", "heatmap-color", [
+    "interpolate", ["linear"], ["heatmap-density"],
+    0,    "rgba(255,255,255,0)",
+    0.25, "rgba(160,160,160,0.6)",
+    0.7,  "rgba(40,40,40,0.88)",
+    hi,   "rgba(20,18,0,0.96)",
+    1.0,  "rgba(215,170,0,1)",
+  ]);
+}
+
+/** Register a callback fired when the user clicks a stop on the map. */
+export function setStopSelectCallback(fn) { _stopSelectCallback = fn; }
+
+/** Highlight a stop on the map by stop_id (pass null to clear). */
+export function highlightMapStop(stopId) {
+  if (!map.getLayer("stops-highlight")) return;
+  map.setFilter("stops-highlight",
+    stopId != null
+      ? ["==", ["get", "stop_id"], stopId]
+      : ["==", ["get", "stop_id"], ""]
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

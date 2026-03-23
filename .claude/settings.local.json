@@ -35,7 +35,11 @@
       "Bash(find /Users/nfi/dev/healthy-transport -type f \\\\\\(-name *.html -o -name *.js -o -name *.jsx -o -name *.ts -o -name *.tsx -o -name *.css \\\\\\))",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(chmod +x /Users/nfi/dev/healthy-transport/scripts/dev.sh)"
+      "Bash(chmod +x /Users/nfi/dev/healthy-transport/scripts/dev.sh)",
+      "Bash(jupyter nbconvert:*)",
+      "Bash(gh run:*)",
+      "Bash(ls /Users/nfi/dev/healthy-transport/scripts/*.sh)",
+      "Bash(bash scripts/dev.sh)"
     ]
   }
 }

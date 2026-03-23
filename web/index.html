@@ -46,26 +46,16 @@
           <button class="btn-icon" data-info="score" aria-label="About score modes">ⓘ</button>
         </div>
         <div class="info-popup hidden" id="info-popup-score">
-          <p><strong>Baseline</strong> — evaluates the geometric quality of a location using the working-age walk curve. No population data. Equal weight per network node. Useful for assessing long-term infrastructure regardless of who lives there today.</p>
-          <p><strong>Contextual</strong> — weights each location by the actual age-disaggregated population living nearby (modelled estimates). Scores reflect today's residents. Low/High show the uncertainty range of the demographic model.</p>
+          <p><strong>Contextual</strong> — weights each street by the actual age mix of nearby residents. Elderly, children, and working-age adults each have different optimal walk distances. Reveals where a stop benefits the most people given today's population.</p>
+          <p><strong>Baseline</strong> — scores streets on network reach alone: how many address points fall within walking distance, every resident counted equally. Useful for identifying locations with broad physical reach, independent of today's demographics.</p>
         </div>
 
-        <div class="mode-options">
-          <label class="mode-option">
-            <input type="radio" name="score-mode" value="baseline" checked />
-            <div class="mode-card">
-              <span class="mode-name">Baseline</span>
-              <span class="mode-desc">Network quality, no population weighting</span>
-            </div>
-          </label>
-          <label class="mode-option">
-            <input type="radio" name="score-mode" value="contextual" />
-            <div class="mode-card">
-              <span class="mode-name">Contextual</span>
-              <span class="mode-desc">Weighted by current residents</span>
-            </div>
-          </label>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="contextual">Contextual</button>
+          <button class="mode-btn" data-mode="baseline">Baseline</button>
         </div>
+        <p class="mode-active-desc" id="mode-desc-contextual">Weighted by who lives nearby — age-disaggregated, modelled estimates.</p>
+        <p class="mode-active-desc hidden" id="mode-desc-baseline">Infrastructure potential — shortest paths to all address points, equal weight per resident.</p>
 
       </div>
 
@@ -76,8 +66,8 @@
           <button class="btn-icon" data-info="group" aria-label="About demographic groups">ⓘ</button>
         </div>
         <div class="info-popup hidden" id="info-popup-group">
-          <p>Each group uses a different benefit curve — the optimal walk distance shifts with age and mobility. Scores reflect how much health benefit a stop at that location would generate for people in that group.</p>
-          <p>Age data is interpolated from neighbourhood census zones to individual buildings.</p>
+          <p>Each group uses a different walk-distance curve. Working-age adults tolerate longer walks (peak ~500m); elderly residents drop off sharply beyond 300m; children's benefit falls to zero around 600m. Scores show how much health benefit a stop at that segment would generate for that group specifically.</p>
+          <p>Population data is modelled from dwelling type and neighbourhood census — not individual-level data.</p>
           <svg class="curves-svg" viewBox="0 0 300 170" xmlns="http://www.w3.org/2000/svg">
             <g transform="translate(30,10)">
               <line x1="0" y1="120" x2="260" y2="120" stroke="#aaa" stroke-width="1"/>
@@ -126,9 +116,9 @@
           <button class="btn-icon" data-info="overlays" aria-label="About overlays">ⓘ</button>
         </div>
         <div class="info-popup hidden" id="info-popup-overlays">
-          <p><strong>Bus stops</strong> — existing stop locations from the national GTFS feed. Compare against the scored segments to see where current provision aligns with — or diverges from — high-benefit zones.</p>
-          <p><strong>Parks &amp; green spaces</strong> — park and playground polygons from the municipality open data.</p>
-          <p><strong>Demographics</strong> — age group estimates per neighbourhood (census zones) and per building (modelled interpolation).</p>
+          <p><strong>Bus stops</strong> — existing stop locations from the national GTFS feed (Rejseplanen). Internal stops are coloured by their score; use them to compare current provision against high-benefit segments.</p>
+          <p><strong>Demographics</strong> — population density heatmap built from modelled entrance-level estimates. Grey = sparse; golden yellow = dense residential core. Switch demographic group to update the heatmap weight.</p>
+          <p><strong>Parks &amp; green spaces</strong> — coming soon.</p>
         </div>
 
         <label class="toggle-row">
@@ -143,6 +133,10 @@
           <input type="checkbox" id="toggle-demographics-bldg" />
           Demographics
         </label>
+        <div class="temp-ctrl">
+          <label class="temp-ctrl-label">Yellow start: <span id="yellow-val">0.88</span></label>
+          <input type="range" id="yellow-thresh" min="0.72" max="0.99" step="0.01" value="0.88" />
+        </div>
       </div>
 
       <button id="btn-back-narrative">← Back</button>
@@ -167,23 +161,25 @@
       <span>Analysis</span>
     </div>
 
-    <!-- KPI row -->
-    <div class="kpi-grid">
-      <div class="kpi-cell">
-        <span class="kpi-value" id="kpi-segments">1,699</span>
-        <span class="kpi-label">Scored segments</span>
-      </div>
-      <div class="kpi-cell">
-        <span class="kpi-value" id="kpi-population">356k</span>
-        <span class="kpi-label">Population in district</span>
-      </div>
+    <!-- Score distribution card -->
+    <div class="chart-block">
+      <div class="chart-block-header">Score distribution</div>
+      <div id="distribution-container"></div>
     </div>
 
     <!-- Baseline vs contextual scatter plot -->
     <div class="chart-block">
       <div class="chart-block-header">Baseline vs Contextual</div>
       <div id="scatter-container"></div>
-      <p class="chart-note">Each dot = one bus stop. Colour = aggregate health benefit.</p>
+      <p class="chart-note">Each dot = one bus stop. Colour = selected group's health benefit score.</p>
+    </div>
+
+    <!-- Population stat -->
+    <div class="chart-block">
+      <div class="pop-stat">
+        <span class="kpi-value" id="kpi-population">356k</span>
+        <span class="kpi-label">Population in district</span>
+      </div>
     </div>
 
   </div><!-- #chart-panel -->
