@@ -3,6 +3,27 @@ import { disableScrollLock } from "./state.js";
 
 let map;
 let curvesPanel = null;
+let _segmentFeatures = null;
+let _stopFeatures = null;
+let _dynamicRampApplied = false;
+let _activeDemoFields = null;
+let _rampLo = null;
+let _rampHi = null;
+
+const STOP_SCORE_FIELD = {
+  baseline:    "score_baseline",
+  aggregate:   "score_aggregate_mid",
+  working_age: "score_working_age_mid_share",
+  elderly:     "score_elderly_mid_share",
+  children:    "score_children_mid_share",
+};
+
+const DEMO_GROUP_FIELD = {
+  aggregate:   { mid: "pop_total_mid",              lo: "pop_total_low",              hi: "pop_total_high",              unc: "unc_pct_total"      },
+  working_age: { mid: "pop_working_age_30_64_mid",  lo: "pop_working_age_30_64_low",  hi: "pop_working_age_30_64_high",  unc: "unc_pct_working_age" },
+  elderly:     { mid: "pop_older_adults_65_79_mid", lo: "pop_older_adults_65_79_low", hi: "pop_older_adults_65_79_high", unc: "unc_pct_elderly"     },
+  children:    { mid: "pop_children_0_14_mid",      lo: "pop_children_0_14_low",      hi: "pop_children_0_14_high",      unc: "unc_pct_children"    },
+};
 
 // ── Initialise MapLibre map ──────────────────────────────────────────────────
 
@@ -30,6 +51,7 @@ export function initMap() {
     _addSources();
     _addLayers();
     _addAttribution();
+    _addPopups();
     // Trigger the initial narrative state so layers are visible from the start
     showOverview();
   });
@@ -40,10 +62,24 @@ export function initMap() {
 // ── Source registration ──────────────────────────────────────────────────────
 
 function _addSources() {
-  map.addSource("boundary-src", { type: "geojson", data: DATA.boundary });
-  map.addSource("segments-src", { type: "geojson", data: DATA.segments });
-  map.addSource("stops-src",    { type: "geojson", data: DATA.stops });
+  map.addSource("boundary-src",     { type: "geojson", data: DATA.boundary });
+  map.addSource("bus-context-src",  { type: "geojson", data: DATA.busContext });
+  map.addSource("segments-src",     { type: "geojson", data: DATA.segments });
+  map.addSource("stops-src",        { type: "geojson", data: DATA.stops });
+  map.addSource("demographics-src", { type: "geojson", data: DATA.demographics });
+
+  // Pre-fetch segment features; apply dynamic ramp once loaded
+  fetch(DATA.segments).then(r => r.json()).then(d => {
+    _segmentFeatures = d.features;
+    _applyDynamicRamp(_segmentFeatures);
+  });
+
+  // Pre-fetch stop features for scatter plot
+  fetch(DATA.stops).then(r => r.json()).then(d => { _stopFeatures = d.features; });
 }
+
+export function getSegmentFeatures() { return _segmentFeatures; }
+export function getStopFeatures()    { return _stopFeatures;    }
 
 // ── Layer registration ───────────────────────────────────────────────────────
 
@@ -71,6 +107,44 @@ function _addLayers() {
     paint: { "line-color": "#2171b5", "line-width": 1.5, "line-dasharray": [4, 3] },
   });
 
+  // Demographics heatmap — hidden initially (toggled by overlay checkbox).
+  // Radius scales exponentially with zoom (base 2) so the heatmap covers the
+  // same geographic footprint regardless of zoom level (~150m radius at all zooms).
+  map.addLayer({
+    id: "demographics-heatmap",
+    type: "heatmap",
+    source: "demographics-src",
+    layout: { visibility: "none" },
+    paint: {
+      "heatmap-weight": ["interpolate", ["linear"], ["get", "pop_total_mid"], 0, 0, 50, 1],
+      "heatmap-intensity": 0.8,
+      // Radius = 5px at zoom 12, exponential base-2 → geographically stable
+      "heatmap-radius": ["interpolate", ["exponential", 2], ["zoom"], 10, 1.25, 16, 80],
+      "heatmap-opacity": 0.60,
+      "heatmap-color": [
+        "interpolate", ["linear"], ["heatmap-density"],
+        0,   "rgba(255,255,255,0)",
+        0.2, "rgba(180,180,180,0.6)",
+        0.5, "rgba(90,90,90,0.8)",
+        0.8, "rgba(20,20,20,0.9)",
+        1.0, "rgba(0,0,0,1)",
+      ],
+    },
+  });
+
+  // Grey context bus routes (outside scoring zone) — hidden until scored segments shown
+  map.addLayer({
+    id: "bus-routes-context",
+    type: "line",
+    source: "bus-context-src",
+    layout: { visibility: "none" },
+    paint: {
+      "line-color": "#aaa",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.0, 16, 2.5],
+      "line-opacity": 0.5,
+    },
+  });
+
   // Scored segments (aggregate) — hidden initially
   map.addLayer({
     id: "segments-aggregate",
@@ -79,17 +153,14 @@ function _addLayers() {
     layout: { visibility: "none" },
     paint: {
       "line-color": SCORE_RAMP,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4],
-      "line-opacity": [
-        "case", ["==", ["get", "interior"], true], 1.0, 0.4,
-      ],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2.0, 16, 5],
+      "line-opacity": 1.0,
     },
   });
 
   // Per-group segment layers (share from same source, different paint)
   for (const [group, ramp] of Object.entries(GROUP_RAMPS)) {
     if (group === "aggregate") continue;
-    const scoreField = `score_${group}_mid_share`;
     map.addLayer({
       id: `segments-${group}`,
       type: "line",
@@ -97,28 +168,84 @@ function _addLayers() {
       layout: { visibility: "none" },
       paint: {
         "line-color": ramp,
-        "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4],
-        "line-opacity": [
-          "case", ["==", ["get", "interior"], true], 1.0, 0.4,
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2.0, 16, 5],
+        "line-opacity": 1.0,
       },
     });
   }
 
-  // Existing bus stops — hidden initially
+  // Existing bus stops — two-tone using palette:
+  //   internal (context=false): steel-azure #004e98
+  //   context  (context=true):  silver      #c0c0c0
   map.addLayer({
     id: "stops-layer",
     type: "circle",
     source: "stops-src",
     layout: { visibility: "none" },
     paint: {
-      "circle-radius": 5,
-      "circle-color": "#08306b",
-      "circle-stroke-width": 1.5,
+      "circle-radius":       ["case", ["get", "context"], 3.5, 5],
+      "circle-color":        ["case", ["get", "context"], "#c0c0c0", "#004e98"],
+      "circle-stroke-width": ["case", ["get", "context"], 0.8, 1.5],
       "circle-stroke-color": "#ffffff",
-      "circle-opacity": 0.85,
+      "circle-opacity":      ["case", ["get", "context"], 0.5, 0.9],
     },
   });
+}
+
+function _addPopups() {
+  const segLayers = [
+    "segments-aggregate",
+    "segments-working_age",
+    "segments-elderly",
+    "segments-children",
+  ];
+
+  // Click popup on scored bus segments
+  for (const layerId of segLayers) {
+    map.on("click", layerId, (e) => {
+      const p = e.features[0].properties;
+      const pct = (v) => (v != null ? (v * 100).toFixed(0) + "%" : "—");
+      new maplibregl.Popup({ maxWidth: "260px" })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <strong>Bus corridor</strong><br>
+          <span style="color:#666;font-size:0.85em">Routes: ${p.route_names || "—"}</span><br>
+          <br>
+          <table style="font-size:0.9em;border-collapse:collapse;width:100%">
+            <tr><td>Aggregate</td><td style="text-align:right"><strong>${pct(p.score_aggregate_mid)}</strong></td></tr>
+            <tr><td>Working-age</td><td style="text-align:right">${pct(p.score_working_age_mid_share)}</td></tr>
+            <tr><td>Elderly</td><td style="text-align:right">${pct(p.score_elderly_mid_share)}</td></tr>
+            <tr><td>Children</td><td style="text-align:right">${pct(p.score_children_mid_share)}</td></tr>
+          </table>
+        `)
+        .addTo(map);
+    });
+    map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+  }
+
+  // Click popup on existing bus stops
+  map.on("click", "stops-layer", (e) => {
+    const p = e.features[0].properties;
+    const pct = (v) => (v != null && !isNaN(+v) ? (+v * 100).toFixed(0) + "%" : "—");
+    new maplibregl.Popup({ maxWidth: "240px" })
+      .setLngLat(e.lngLat)
+      .setHTML(`
+        <strong>${p.stop_name || "Bus stop"}</strong><br>
+        <span style="color:#666;font-size:0.85em;text-transform:capitalize">${p.transport_mode || ""}</span><br>
+        ${p.route_names ? `<span style="font-size:0.85em">Routes: ${p.route_names}</span><br>` : ""}
+        ${p.score_aggregate_mid != null ? `
+        <br><table style="font-size:0.9em;border-collapse:collapse;width:100%">
+          <tr><td>Aggregate</td><td style="text-align:right"><strong>${pct(p.score_aggregate_mid)}</strong></td></tr>
+          <tr><td>Working-age</td><td style="text-align:right">${pct(p.score_working_age_mid_share)}</td></tr>
+          <tr><td>Elderly</td><td style="text-align:right">${pct(p.score_elderly_mid_share)}</td></tr>
+          <tr><td>Children</td><td style="text-align:right">${pct(p.score_children_mid_share)}</td></tr>
+        </table>` : ""}
+      `)
+      .addTo(map);
+  });
+  map.on("mouseenter", "stops-layer", () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "stops-layer", () => { map.getCanvas().style.cursor = ""; });
 }
 
 function _addAttribution() {
@@ -158,6 +285,7 @@ export function showBenefitCurves() {
 
 export function showScoredNetwork() {
   _setVisibility("segments-aggregate", "visible");
+  _setVisibility("bus-routes-context", "visible");
   _setVisibility("stops-layer", "none");
   _removeCurvesPanel();
   _removeCatchmentRing();
@@ -166,15 +294,16 @@ export function showScoredNetwork() {
 
 export function showGapAnalysis() {
   _setVisibility("segments-aggregate", "visible");
+  _setVisibility("bus-routes-context", "visible");
   _setVisibility("stops-layer", "visible");
   _removeCurvesPanel();
 }
 
 export function enterInteractiveTool() {
   _setVisibility("segments-aggregate", "visible");
+  _setVisibility("bus-routes-context", "visible");
   _setVisibility("stops-layer", "visible");
   _removePlaceholderOverlay();
-  toggleInteriorOnly(true); // show only well-covered segments by default
   document.getElementById("tool-panel").classList.remove("hidden");
   document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
@@ -186,7 +315,6 @@ export function enterInteractiveToolBasemap() {
   _hideAllScoreLayers();
   _setVisibility("stops-layer", "none");
   _removePlaceholderOverlay();
-  toggleInteriorOnly(true);
   document.getElementById("tool-panel").classList.remove("hidden");
   document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
@@ -196,12 +324,27 @@ export function enterInteractiveToolBasemap() {
 // ── Score mode toggle ────────────────────────────────────────────────────────
 
 export function setScoreMode(mode) {
-  // Placeholder: switching between baseline and contextual score columns.
-  // Baseline columns (score_*_baseline) do not yet exist in the GeoJSON —
-  // this will become functional once the scoring pipeline is extended.
-  // For now, mode switching is a no-op on the map but wires cleanly for later.
-  // TODO: update layer paint expressions when baseline columns are available.
-  console.info(`[map] score mode → ${mode} (paint update pending baseline data)`);
+  const groupSection = document.getElementById("group-selector-section");
+  if (groupSection) groupSection.classList.toggle("hidden", mode === "baseline");
+
+  const titleEl = document.getElementById("legend-title");
+
+  if (mode === "baseline") {
+    if (titleEl) titleEl.textContent = "Network coverage";
+    setActiveGroup("aggregate");
+    if (_rampLo !== null) {
+      if (map.getLayer("segments-aggregate"))
+        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_baseline"));
+      _applyStopRamp("baseline");
+    }
+  } else {
+    if (titleEl) titleEl.textContent = "Health benefit score";
+    if (_rampLo !== null) {
+      if (map.getLayer("segments-aggregate"))
+        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_aggregate_mid"));
+      _applyStopRamp("aggregate");
+    }
+  }
 }
 
 // ── Placeholder transitions for Rail / Cycling / Green tabs ──────────────────
@@ -276,11 +419,27 @@ export function setActiveGroup(group) {
   }
   const target = group === "aggregate" ? "segments-aggregate" : `segments-${group}`;
   _setVisibility(target, "visible");
+  _applyStopRamp(group);
+  _updateDemographicsGroup(group);
+}
+
+function _updateDemographicsGroup(group) {
+  const f = DEMO_GROUP_FIELD[group] || DEMO_GROUP_FIELD.aggregate;
+  _activeDemoFields = f;
+  if (!map.getLayer("demographics-heatmap")) return;
+  map.setPaintProperty("demographics-heatmap", "heatmap-weight",
+    ["interpolate", ["linear"], ["get", f.mid], 0, 0, 50, 1]);
 }
 
 export function toggleStops(visible) {
+  // Controls all stops (internal + context) together
   _setVisibility("stops-layer", visible ? "visible" : "none");
 }
+
+export function toggleDemographics(visible) {
+  _setVisibility("demographics-heatmap", visible ? "visible" : "none");
+}
+
 
 export function toggleInteriorOnly(interiorOnly) {
   const segLayers = [
@@ -297,6 +456,59 @@ export function toggleInteriorOnly(interiorOnly) {
   }
 }
 
+// ── Dynamic color ramp ───────────────────────────────────────────────────────
+
+// Low scores → orange, high scores → blue (orange = underserved, blue = well-served)
+function _buildRamp(field) {
+  if (_rampLo === null) return ["get", field]; // fallback before domain is set
+  const at = (t) => _rampLo + (_rampHi - _rampLo) * t;
+  return [
+    "interpolate", ["linear"], ["get", field],
+    at(0.0),  "#ff6700",  // pumpkin-spice — low / underserved
+    at(0.25), "#ebebeb",  // platinum
+    at(0.5),  "#c0c0c0",  // silver
+    at(0.75), "#3a6ea5",  // cornflower-ocean
+    at(1.0),  "#004e98",  // steel-azure — high / well-served
+  ];
+}
+
+function _applyDynamicRamp(features) {
+  const vals = features.map(f => +f.properties.score_aggregate_mid).filter(v => !isNaN(v));
+  if (!vals.length) return;
+  vals.sort((a, b) => a - b);
+  _rampLo = vals[0];
+  _rampHi = vals[vals.length - 1];
+
+  if (map.getLayer("segments-aggregate"))   map.setPaintProperty("segments-aggregate",   "line-color", _buildRamp("score_aggregate_mid"));
+  if (map.getLayer("segments-working_age")) map.setPaintProperty("segments-working_age", "line-color", _buildRamp("score_working_age_mid_share"));
+  if (map.getLayer("segments-elderly"))     map.setPaintProperty("segments-elderly",     "line-color", _buildRamp("score_elderly_mid_share"));
+  if (map.getLayer("segments-children"))    map.setPaintProperty("segments-children",    "line-color", _buildRamp("score_children_mid_share"));
+
+  _applyStopRamp("aggregate");
+  _updateLegend();
+  _dynamicRampApplied = true;
+}
+
+function _applyStopRamp(group) {
+  if (!map.getLayer("stops-layer") || _rampLo === null) return;
+  const field = STOP_SCORE_FIELD[group] || STOP_SCORE_FIELD.aggregate;
+  map.setPaintProperty("stops-layer", "circle-color", [
+    "case", ["get", "context"],
+    "#c0c0c0",        // context stops stay silver
+    _buildRamp(field),
+  ]);
+}
+
+function _updateLegend() {
+  const bar = document.querySelector("#legend .gradient");
+  if (bar) bar.style.background =
+    "linear-gradient(to right, #ff6700, #ebebeb, #c0c0c0, #3a6ea5, #004e98)";
+  const minEl = document.getElementById("legend-min");
+  const maxEl = document.getElementById("legend-max");
+  if (minEl) minEl.textContent = "Low";
+  if (maxEl) maxEl.textContent = "High";
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function _setVisibility(layerId, visibility) {
@@ -311,6 +523,7 @@ function _hideAllScoreLayers() {
     "segments-working_age",
     "segments-elderly",
     "segments-children",
+    "bus-routes-context",
   ]) {
     _setVisibility(layer, "none");
   }

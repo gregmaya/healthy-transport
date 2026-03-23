@@ -86,9 +86,12 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 | File | Content | Status |
 |---|---|---|
-| `norrebro_bus_segments_scored.geojson` | 8,328 bus-route segments, mid-scenario scores + `interior` flag (WGS84, 4.8 MB) | ✅ exists (mid only; re-export after edge-artifact decision) |
+| `norrebro_bus_segments_scored.geojson` | 1,699 bus-route segments (GTFS geometry, ≤20m), mid-scenario scores + `score_baseline` + `interior` flag (WGS84, 946 KB) | ✅ exists |
 | `norrebro_boundary.geojson` | District boundary (WGS84, 16 KB) | ✅ exists |
-| `norrebro_stops.geojson` | 2,581 bus stops benchmark layer (WGS84, 536 KB) | ✅ exists |
+| `norrebro_stops.geojson` | 552 bus stops benchmark layer with all `score_*` columns (WGS84, 332 KB) | ✅ exists |
+| `norrebro_bus_routes_context.geojson` | 68 dissolved GTFS bus route geometries for context display (WGS84, 149 KB) | ✅ exists |
+| `norrebro_demographics.geojson` | 10,175 entrance points for demographics heatmap; includes low/high/unc_pct columns (WGS84, 7.7 MB) | ✅ exists |
+| `norrebro_neighbourhoods.geojson` | 5 sub-neighbourhood polygons (WGS84, 33 KB) — exported but not used in frontend | ✅ exists |
 | `norrebro_bus_segments_scored.gpkg` | Same segments as GeoJSON, GeoPackage format for QGIS | Not yet — pending edge-artifact decision |
 | `norrebro_rail_stops_scored.geojson` | One scored point per metro/train entrance (Baseline + Contextual) | Not yet — blocked on data source |
 | `norrebro_greenspace_access.geojson` | 20m segments scored by network distance to parks/playgrounds | Not yet |
@@ -213,11 +216,11 @@ Each tab is a self-contained scrollytelling narrative (4–6 steps) that hands o
 
 ## Immediate Next Steps
 
-1. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates all remaining exports.
-2. **Extend bus scoring to Baseline + low/high Contextual** — implement `score_{group}_baseline` (working-age curve, equal node weight) and expand `SCENARIOS = ("low", "mid", "high")` in notebook 11.
-3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
-4. **Implement map scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are currently stubs; implement with `map.flyTo` / layer opacity / data animations.
-5. **Wire chart panel to live data** — `#chart-panel` KPIs and chart blocks are currently static placeholders; connect to computed values from the loaded GeoJSON once score distributions are available.
+1. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates low/high scenario export.
+2. **Extend bus scoring to low/high Contextual** — `score_baseline` is done; expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
+3. **Implement map scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are currently stubs; implement with `map.flyTo` / layer opacity / data animations.
+4. **Segment hover/click popup** — show mid score + [low, high] range for the active demographic group in interactive mode.
+5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
 
 ---
 

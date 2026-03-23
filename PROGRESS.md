@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 3a (bus scoring) validated; four-outcome scope confirmed; web UI polish complete (title, scroll endpoint, overlays redesign, chart panel, info popups)
+**Current Phase**: Phase 5 active — bus route export pipeline complete; baseline scoring implemented; interactive tool wired with dynamic ramp, scatter plot, and demographics heatmap
 **Last Updated**: March 2026
 
 > This project follows the reorientation decisions documented in
@@ -12,11 +12,11 @@
 ## Prioritised Next Steps
 
 1. **Resolve edge-artifact problem** — 84.8% of live segments fall within 80m of the district boundary and have truncated catchments. Options: (a) extend analysis boundary by ~200m before scoring and clip back; (b) accept `interior=True` filter (only 1,265 fully-interior segments) for the final published layer; (c) document as a known limitation with a UI flag. Decision needed before final export.
-2. **Extend bus scoring to Baseline + low/high Contextual** — implement `score_{group}_baseline` (working-age curve, equal node weight) and expand `SCENARIOS = ("low", "mid", "high")` in notebook 11.
-3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
-4. **Promote notebook 11 to a script** — `scripts/score/score_segments.py`; save scored GeoPackage to `data/integrated/norrebro_bus_segments_scored.gpkg`.
-5. **Web app: implement scroll transitions** — map state functions (showCatchmentRing, showBenefitCurves, showScoredNetwork, showGapAnalysis) are stubs; implement with MapLibre flyTo / layer opacity animations.
-6. **Compress web GeoJSON** — segments file is 4.8 MB; evaluate PMTiles or property pruning before deployment.
+2. **Extend bus scoring to low/high Contextual** — expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
+3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations.
+4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
+5. **Segment hover/click popup** — show mid score + [low, high] range on hover in interactive mode.
+6. **Promote notebook 11 to a script** — `scripts/score/score_segments.py`; save scored GeoPackage to `data/integrated/norrebro_bus_segments_scored.gpkg`.
 
 ---
 
@@ -136,7 +136,7 @@ Output folder: `data/integrated/`
 
 ### Cross-cutting: Two Scoring Modes
 
-- [ ] **Baseline scoring** — implement `score_{group}_baseline` on all tracks: working-age B(d) curve, equal weight per network node, no population count
+- [x] **Baseline scoring (bus)** — `score_baseline` implemented in notebook 11: working-age B(d) curve, `weight_baseline = 1.0` per entrance (equal weight, no population count); column auto-exported via `score_*` pickup in export script
 - [ ] **Contextual low/high scenarios** — expand `SCENARIOS = ("low", "mid", "high")` in notebook 11 (bus); apply same to all other tracks
 - [ ] **Column naming enforced across all layers**: `score_{group}_baseline`, `score_{group}_low`, `score_{group}_mid`, `score_{group}_high`, `score_{group}_mid_share`
 - [ ] **Segment popup**: on hover/click show mid score + `[low, high]` range for active group
@@ -174,12 +174,15 @@ Output folder: `data/integrated/`
 
 *Output: pre-baked static files in `data/web/` for the MapLibre GL JS front end.*
 
-- [x] Scored segments exported to GeoJSON (WGS84) → `data/web/norrebro_bus_segments_scored.geojson` (8,328 features, 4.8 MB)
+- [x] Scored segments exported to GeoJSON (WGS84) → `data/web/norrebro_bus_segments_scored.geojson` (1,699 bus-route segments, 946 KB, includes `score_baseline`)
 - [x] Nørrebro boundary exported → `data/web/norrebro_boundary.geojson` (16 KB)
-- [x] Existing bus stops exported → `data/web/norrebro_stops.geojson` (2,581 stops, 536 KB)
+- [x] Existing bus stops exported → `data/web/norrebro_stops.geojson` (552 stops, 332 KB, includes all `score_*` columns)
+- [x] Bus route context geometry → `data/web/norrebro_bus_routes_context.geojson` (68 dissolved route geometries, 149 KB)
+- [x] Demographics heatmap data → `data/web/norrebro_demographics.geojson` (10,175 entrance points, 7.7 MB, includes low/high/unc_pct columns)
+- [x] Neighbourhoods → `data/web/norrebro_neighbourhoods.geojson` (5 features, 33 KB — generated but not used in frontend)
+- [x] Export script → `scripts/export/export_bus_route_segments.py` (new; handles route snapping, segment decomposition, score remapping)
 - [ ] **⚠️ Re-export needed** once edge-artifact decision is made (interior filter or extended boundary)
-- [ ] Evaluate PMTiles conversion — 4.8 MB GeoJSON is borderline for production; evaluate before deploy
-- [ ] Decide on raw segments vs H3 hex aggregation toggle (deferred)
+- [ ] Evaluate PMTiles conversion for demographics layer (7.7 MB is borderline for production)
 - [ ] Document web data schema and update data catalogue
 
 ---
@@ -202,12 +205,17 @@ Output folder: `data/integrated/`
 - [x] **Tool panel redesign** — three ctrl-sections (Score Mode, Demographic Group, Overlays), each with ⓘ button; Baseline listed first with inline description; mode selection via radio inputs; panel width 210px
 - [x] **Floating info popups** — per-category ⓘ buttons open fixed-position overlays to the right of the tool panel; `#modal-backdrop` blocks other interactions; backdrop click closes popup
 - [x] **Benefit curves in demographic popup** — annotated SVG with all three B(d) curves (Working-age, Elderly, Children) embedded in the Demographic Group info popup
-- [x] **Overlays redesign** — "Bus stops" ON by default; "Reliable data only" removed (interior filter applied silently on enter); three placeholder overlays added (Parks & green spaces, Demographics—neighbourhood, Demographics—buildings) with "coming soon" badges
-- [x] **Right-hand chart panel** (`#chart-panel`) — appears in interactive mode only (fixed, right side, 280px); contains KPI grid (8,328 scored segments, 356k population) + 3 chart placeholder blocks (Score distribution, Coverage by group, Gap analysis)
+- [x] **Overlays redesign** — "Bus stops" ON by default; "Reliable data only" removed (interior filter applied silently on enter); Parks placeholder disabled; Demographics overlay wired to heatmap
+- [x] **Right-hand chart panel** (`#chart-panel`) — appears in interactive mode only (fixed, right side, 280px); KPI grid (1,699 scored segments, 356k population); Baseline vs Contextual scatter plot (SVG, reactive to group selection)
 - [x] **Map layout in interactive mode** — map fixed with `right: var(--chart-panel-w)` to accommodate chart panel
+- [x] **Dynamic color ramp** — domain computed from actual data range (0.117–0.530); orange=low (#ff6700), blue=high (#004e98); applied to segments, stops, and scatter plot dots
+- [x] **Baseline mode** — score mode toggle hides demographic group selector; segments/stops recolor to `score_baseline`; legend title switches to "Network coverage"
+- [x] **Contextual mode** — group selector visible; segments/stops recolor to selected group's `score_*_mid_share`; legend title shows "Health benefit score"
+- [x] **Demographics heatmap** — B&W color scheme, opacity 0.60, zoom-independent (exponential base-2 radius), no slider; wired to "Demographics" checkbox
+- [x] **Scatter plot** — SVG, vanilla JS; X axis fixed to `score_baseline` ("Network coverage"), Y axis follows selected demographic group; dots colored by aggregate contextual score
+- [x] **Group buttons wired to scatter** — selecting a group updates both map layer colors and scatter Y axis simultaneously
 - [ ] **Map transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations
-- [ ] Wire `setScoreMode()` to actual layer paint properties once Baseline columns exist in data
-- [ ] Wire scenario rail to `score_{group}_{scenario}` columns
+- [ ] Wire scenario rail to `score_{group}_{scenario}` columns (low/high not yet computed)
 - [ ] Segment hover/click popup: mid score + [low, high] range
 - [ ] Integrate top-down health data visualisations (DODA1, HEAT, lifestyle factors)
 - [ ] Review and sign off Bus narrative before building Rail/Green interactive layers

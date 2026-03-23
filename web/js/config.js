@@ -2,11 +2,14 @@
 // Local dev:  bash scripts/dev.sh  → http://localhost:8000
 // Production: GitHub Actions assembles the same structure → gh-pages branch
 export const DATA = {
-  segments:     "data/web/norrebro_bus_segments_scored.geojson",
-  boundary:     "data/web/norrebro_boundary.geojson",
-  stops:        "data/web/norrebro_stops.geojson",
-  rail_stops:   "data/web/norrebro_rail_stops_scored.geojson",   // not yet generated
-  green_spaces: "data/web/norrebro_greenspace_access.geojson",   // not yet generated
+  segments:      "data/web/norrebro_bus_segments_scored.geojson",
+  busContext:    "data/web/norrebro_bus_routes_context.geojson",
+  boundary:      "data/web/norrebro_boundary.geojson",
+  stops:         "data/web/norrebro_stops.geojson",
+  neighbourhoods:"data/web/norrebro_neighbourhoods.geojson",
+  demographics:  "data/web/norrebro_demographics.geojson",
+  rail_stops:    "data/web/norrebro_rail_stops_scored.geojson",   // not yet generated
+  green_spaces:  "data/web/norrebro_greenspace_access.geojson",   // not yet generated
 };
 
 // Nørrebro bounding box [lng_min, lat_min, lng_max, lat_max]
@@ -18,31 +21,40 @@ export const MAP_INIT = {
   zoom: 13.5,
 };
 
-// Blue colour ramp for score layers (0 → near-white, 1 → deep navy)
+// Design tokens
+export const PALETTE = {
+  pumpkinSpice:     "#ff6700",   // high scores — vivid orange
+  platinum:         "#ebebeb",   // low scores  — near-white grey
+  silver:           "#c0c0c0",   // low-mid     — grey
+  cornflowerOcean:  "#3a6ea5",   // mid         — medium blue
+  steelAzure:       "#004e98",   // upper-mid   — deep blue
+};
+
+// Score ramp: platinum → silver → cornflower → steel → pumpkin
+// Upper range (0.75–1.0) transitions to orange so high-scoring zones pop.
 export const SCORE_RAMP = [
   "interpolate", ["linear"], ["get", "score_aggregate_mid"],
-  0.0, "#f7fbff",
-  0.2, "#c6dbef",
-  0.4, "#6baed6",
-  0.7, "#2171b5",
-  1.0, "#08306b",
+  0.0,  "#ebebeb",   // platinum   — low
+  0.3,  "#c0c0c0",   // silver
+  0.55, "#3a6ea5",   // cornflower-ocean
+  0.75, "#004e98",   // steel-azure
+  1.0,  "#ff6700",   // pumpkin-spice — high
 ];
 
-// Per-group score colours (single saturated blue for each group layer)
+// Per-group ramps use the same palette with the group-specific field.
+const _groupRamp = (field) => [
+  "interpolate", ["linear"], ["get", field],
+  0.0,  "#ebebeb",
+  0.3,  "#c0c0c0",
+  0.55, "#3a6ea5",
+  0.75, "#004e98",
+  1.0,  "#ff6700",
+];
 export const GROUP_RAMPS = {
-  working_age: [
-    "interpolate", ["linear"], ["get", "score_working_age_mid_share"],
-    0.0, "#f7fbff", 0.4, "#6baed6", 1.0, "#08306b",
-  ],
-  elderly: [
-    "interpolate", ["linear"], ["get", "score_elderly_mid_share"],
-    0.0, "#f7fbff", 0.4, "#6baed6", 1.0, "#08306b",
-  ],
-  children: [
-    "interpolate", ["linear"], ["get", "score_children_mid_share"],
-    0.0, "#f7fbff", 0.4, "#6baed6", 1.0, "#08306b",
-  ],
-  aggregate: SCORE_RAMP,
+  working_age: _groupRamp("score_working_age_mid_share"),
+  elderly:     _groupRamp("score_elderly_mid_share"),
+  children:    _groupRamp("score_children_mid_share"),
+  aggregate:   SCORE_RAMP,
 };
 
 // Score mode descriptions shown below the Baseline / Contextual toggle

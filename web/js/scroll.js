@@ -1,5 +1,6 @@
 import { TABS } from "./config.js";
 import { enableScrollLock, disableScrollLock } from "./state.js";
+import { initScatter, updateScatterGroup } from "./scatter.js";
 import {
   showOverview,
   showCatchmentRing,
@@ -11,6 +12,8 @@ import {
   backToNarrative,
   setActiveGroup,
   toggleStops,
+  toggleDemographics,
+  getStopFeatures,
   setScoreMode,
   showRailPlaceholder,
   showCyclingPlaceholder,
@@ -122,8 +125,20 @@ export function switchTab(tabId) {
   // Re-wire the CTA button (injected fresh by buildSteps)
   const enterBtn = document.getElementById("btn-enter-tool");
   if (enterBtn) {
-    const toolFn = tab.id === "bus" ? enterInteractiveTool : enterInteractiveToolBasemap;
-    enterBtn.addEventListener("click", toolFn);
+    const isBus = tab.id === "bus";
+    const toolFn = isBus ? enterInteractiveTool : enterInteractiveToolBasemap;
+    enterBtn.addEventListener("click", () => {
+      toolFn();
+      if (isBus) {
+        // Init scatter once stop features are fetched (may already be ready)
+        const tryInit = () => {
+          const features = getStopFeatures();
+          if (features) { initScatter(features); }
+          else { setTimeout(tryInit, 200); }
+        };
+        tryInit();
+      }
+    });
   }
 }
 
@@ -174,6 +189,7 @@ export function initToolPanel() {
       document.querySelectorAll(".group-btn").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
       setActiveGroup(btn.dataset.group);
+      updateScatterGroup(btn.dataset.group);
     });
   });
 
@@ -183,28 +199,30 @@ export function initToolPanel() {
     stopsChk.addEventListener("change", () => toggleStops(stopsChk.checked));
   }
 
+  // Demographics toggle
+  const bldgChk = document.getElementById("toggle-demographics-bldg");
+  if (bldgChk) {
+    bldgChk.addEventListener("change", () => toggleDemographics(bldgChk.checked));
+  }
+
   // Score mode toggle (Baseline / Contextual radio inputs)
   document.querySelectorAll("input[name='score-mode']").forEach((radio) => {
-    radio.addEventListener("change", () => {
-      const mode = radio.value;
-      setScoreMode(mode);
-      const rail = document.getElementById("scenario-rail");
-      if (rail) rail.classList.toggle("hidden", mode !== "contextual");
-    });
-  });
-
-  // Scenario rail (Low · Mid · High) — Contextual only
-  document.querySelectorAll(".scenario-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".scenario-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      // Scenario switching wired once score columns exist in data
-    });
+    radio.addEventListener("change", () => setScoreMode(radio.value));
   });
 
   // CTA button inside the last narrative step (wired initially; re-wired on tab switch)
   const enterBtn = document.getElementById("btn-enter-tool");
-  if (enterBtn) enterBtn.addEventListener("click", enterInteractiveTool);
+  if (enterBtn) {
+    enterBtn.addEventListener("click", () => {
+      enterInteractiveTool();
+      const tryInit = () => {
+        const features = getStopFeatures();
+        if (features) { initScatter(features); }
+        else { setTimeout(tryInit, 200); }
+      };
+      tryInit();
+    });
+  }
 
   // Back to narrative button (inside tool panel)
   const backBtn = document.getElementById("btn-back-narrative");

@@ -67,19 +67,10 @@
           </label>
         </div>
 
-        <!-- Scenario rail — visible in Contextual mode only -->
-        <div class="scenario-rail hidden" id="scenario-rail">
-          <span class="scenario-label">Population estimate</span>
-          <div class="scenario-buttons">
-            <button class="scenario-btn" data-scenario="low">Low</button>
-            <button class="scenario-btn active" data-scenario="mid">Mid</button>
-            <button class="scenario-btn" data-scenario="high">High</button>
-          </div>
-        </div>
       </div>
 
       <!-- ── DEMOGRAPHIC GROUP ───────────────────────────────────────────── -->
-      <div class="ctrl-section">
+      <div class="ctrl-section" id="group-selector-section">
         <div class="ctrl-section-header">
           <span class="ctrl-label">Demographic group</span>
           <button class="btn-icon" data-info="group" aria-label="About demographic groups">ⓘ</button>
@@ -148,13 +139,9 @@
           <input type="checkbox" id="toggle-parks" disabled />
           Parks &amp; green spaces <span class="badge">coming soon</span>
         </label>
-        <label class="toggle-row toggle-row--disabled">
-          <input type="checkbox" id="toggle-demographics-nb" disabled />
-          Demographics — neighbourhood <span class="badge">coming soon</span>
-        </label>
-        <label class="toggle-row toggle-row--disabled">
-          <input type="checkbox" id="toggle-demographics-bldg" disabled />
-          Demographics — buildings <span class="badge">coming soon</span>
+        <label class="toggle-row">
+          <input type="checkbox" id="toggle-demographics-bldg" />
+          Demographics
         </label>
       </div>
 
@@ -163,11 +150,11 @@
 
     <!-- Score legend -->
     <div id="legend">
-      Health benefit score
+      <span id="legend-title">Health benefit score</span>
       <div class="legend-bar">
-        <span>Low</span>
+        <span id="legend-min">Low</span>
         <div class="gradient"></div>
-        <span>High</span>
+        <span id="legend-max">High</span>
       </div>
     </div>
 
@@ -183,7 +170,7 @@
     <!-- KPI row -->
     <div class="kpi-grid">
       <div class="kpi-cell">
-        <span class="kpi-value" id="kpi-segments">8,328</span>
+        <span class="kpi-value" id="kpi-segments">1,699</span>
         <span class="kpi-label">Scored segments</span>
       </div>
       <div class="kpi-cell">
@@ -192,20 +179,11 @@
       </div>
     </div>
 
-    <!-- Chart placeholders -->
+    <!-- Baseline vs contextual scatter plot -->
     <div class="chart-block">
-      <div class="chart-block-header">Score distribution</div>
-      <div class="chart-placeholder">Chart coming soon</div>
-    </div>
-
-    <div class="chart-block">
-      <div class="chart-block-header">Coverage by group</div>
-      <div class="chart-placeholder">Chart coming soon</div>
-    </div>
-
-    <div class="chart-block">
-      <div class="chart-block-header">Gap analysis</div>
-      <div class="chart-placeholder">Chart coming soon</div>
+      <div class="chart-block-header">Baseline vs Contextual</div>
+      <div id="scatter-container"></div>
+      <p class="chart-note">Each dot = one bus stop. Colour = aggregate health benefit.</p>
     </div>
 
   </div><!-- #chart-panel -->
