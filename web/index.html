@@ -117,7 +117,7 @@
         </div>
         <div class="info-popup hidden" id="info-popup-overlays">
           <p><strong>Bus stops</strong> — existing stop locations from the national GTFS feed (Rejseplanen). Internal stops are coloured by their score; use them to compare current provision against high-benefit segments.</p>
-          <p><strong>Demographics</strong> — population density heatmap built from modelled entrance-level estimates. Grey = sparse; golden yellow = dense residential core. Switch demographic group to update the heatmap weight.</p>
+          <p><strong>Demographics</strong> — population density heatmap built from modelled entrance-level estimates. Darker = denser residential concentration. Switch demographic group to update the heatmap weight.</p>
           <p><strong>Parks &amp; green spaces</strong> — coming soon.</p>
         </div>
 
@@ -125,21 +125,16 @@
           <input type="checkbox" id="toggle-stops" checked />
           Bus stops
         </label>
-        <label class="toggle-row toggle-row--disabled">
-          <input type="checkbox" id="toggle-parks" disabled />
-          Parks &amp; green spaces <span class="badge">coming soon</span>
-        </label>
         <label class="toggle-row">
           <input type="checkbox" id="toggle-demographics-bldg" />
-          Demographics
+          Population
         </label>
-        <div class="temp-ctrl">
-          <label class="temp-ctrl-label">Yellow start: <span id="yellow-val">0.88</span></label>
-          <input type="range" id="yellow-thresh" min="0.72" max="0.99" step="0.01" value="0.88" />
-        </div>
+        <label class="toggle-row toggle-row--disabled">
+          <input type="checkbox" id="toggle-parks" disabled />
+          Green spaces <span class="badge">coming soon</span>
+        </label>
       </div>
 
-      <button id="btn-back-narrative">← Back</button>
     </div><!-- #tool-panel -->
 
     <!-- Score legend -->
@@ -158,31 +153,92 @@
   <div id="chart-panel" class="hidden">
 
     <div class="chart-panel-header">
-      <span>Analysis</span>
+      <span id="chart-mode-label">Contextual mode</span>
     </div>
 
-    <!-- Score distribution card -->
+    <!-- Distribution card -->
     <div class="chart-block">
-      <div class="chart-block-header">Score distribution</div>
+      <div class="chart-block-header">
+        Distribution
+        <button class="btn-icon" data-info="distribution" aria-label="About score distribution">ⓘ</button>
+      </div>
+      <p class="chart-subtitle">What share of stops are optimally placed?</p>
+      <div class="info-popup hidden" id="info-popup-distribution">
+        <p>Each bar shows the share of bus stops in a performance band. Bands are defined by a normalised health-benefit score (0–1). Higher = more benefit generated for walking residents.</p>
+        <p>In <strong>Contextual mode</strong> the score is weighted by the age distribution of nearby residents. In <strong>Baseline mode</strong> it reflects geometric network reach only.</p>
+      </div>
       <div id="distribution-container"></div>
     </div>
 
     <!-- Baseline vs contextual scatter plot -->
     <div class="chart-block">
-      <div class="chart-block-header">Baseline vs Contextual</div>
+      <div class="chart-block-header">
+        Baseline vs Contextual
+        <button class="btn-icon" data-info="scatter" aria-label="About this chart">ⓘ</button>
+      </div>
+      <div class="info-popup hidden" id="info-popup-scatter">
+        <p>Each point is one bus stop. The X-axis shows its geometric network score (Baseline); the Y-axis shows its population-weighted score (Contextual). Stops above the dashed diagonal generate more health benefit than their geometry alone predicts — stops below generate less.</p>
+        <p><strong>Note:</strong> only residents registered within Nørrebro are counted. Surrounding populations who use these stops are not reflected in the scores.</p>
+      </div>
+      <p class="chart-subtitle">Does network coverage translate to health benefit for local residents?</p>
       <div id="scatter-container"></div>
-      <p class="chart-note">Each dot = one bus stop. Colour = selected group's health benefit score.</p>
     </div>
 
-    <!-- Population stat -->
+    <!-- Green Path Access placeholder -->
+    <div class="chart-block chart-block--placeholder" id="greenspace-placeholder">
+      <div class="chart-block-header">
+        Green Path Access
+        <span class="tag-tbd">TBD</span>
+      </div>
+      <p class="placeholder-note">Percentage of pedestrian paths passing through green spaces — methodology in progress.</p>
+    </div>
+
+    <!-- Population stat + age bar chart -->
     <div class="chart-block">
       <div class="pop-stat">
         <span class="kpi-value" id="kpi-population">356k</span>
-        <span class="kpi-label">Population in district</span>
+        <div class="pop-label-row">
+          <span class="kpi-label">Population in </span><select id="neighbourhood-select" class="neighbourhood-inline-sel">
+            <option value="">All Nørrebro</option>
+            <option value="indre">Indre Nørrebro</option>
+            <option value="ydre">Ydre Nørrebro</option>
+            <option value="nordvest">Nordvest</option>
+            <option value="utterslev">Utterslev</option>
+            <option value="bispebjerg">Bispebjerg</option>
+          </select>
+        </div>
       </div>
+
+      <!-- Demographic group bars -->
+      <div class="demo-bars-section">
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Children<span class="demo-bar-age"> 0–14</span></span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="bar-children" style="width:18%;background:#c6dbef"></div>
+          </div>
+          <span class="demo-bar-pct" id="pct-children">18%</span>
+        </div>
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Working-age<span class="demo-bar-age"> 15–64</span></span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="bar-working-age" style="width:74%;background:#2171b5"></div>
+          </div>
+          <span class="demo-bar-pct" id="pct-working-age">74%</span>
+        </div>
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Elderly<span class="demo-bar-age"> 65+</span></span>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill" id="bar-elderly" style="width:8%;background:#6baed6"></div>
+          </div>
+          <span class="demo-bar-pct" id="pct-elderly">8%</span>
+        </div>
+      </div>
+      <p class="age-bar-note">Estimates based on district census · real data planned</p>
     </div>
 
   </div><!-- #chart-panel -->
+
+<div id="chart-resize-handle" title="Drag to resize panel"></div>
 
 </div><!-- #app -->
 

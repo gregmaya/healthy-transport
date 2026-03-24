@@ -7,12 +7,12 @@
 
 import { getRampDomain } from "./map.js";
 
-const BANDS = [
-  { lo: 0,    hi: 0.15,     label: "Poorly placed" },
-  { lo: 0.15, hi: 0.30,     label: "Limited reach"  },
-  { lo: 0.30, hi: 0.45,     label: "Moderate"        },
-  { lo: 0.45, hi: 0.60,     label: "Well placed"     },
-  { lo: 0.60, hi: Infinity, label: "Optimal"          },
+export const BANDS = [
+  { lo: 0,    hi: 0.20,     label: "Low benefit", textColor: "#c94e00" },
+  { lo: 0.20, hi: 0.40,     label: "Moderate",    textColor: "#7a7a7a" },
+  { lo: 0.40, hi: 0.60,     label: "Good",        textColor: "#3a6ea5" },
+  { lo: 0.60, hi: 0.80,     label: "High",        textColor: "#1d5490" },
+  { lo: 0.80, hi: Infinity, label: "Optimal",     textColor: "#004e98" },
 ];
 
 const GROUP_Y_FIELD = {
@@ -71,7 +71,8 @@ const ML = 32, MB = 32, MR = 8, MT = 10;
 const PW = W - ML - MR;
 const PH = H - MT - MB;
 
-function fmt(v) { return (v * 100).toFixed(0) + "%"; }
+/** Format a score value as a decimal string. */
+function fmt(v) { return (+v).toFixed(2); }
 
 let _features = null;
 let _currentGroup = "aggregate";
@@ -94,25 +95,59 @@ export function highlightScatterStop(stopId) {
       circ.setAttribute("stroke-width", 0);
     }
   });
+  _updateStopLabel();
+}
+
+function _updateStopLabel() {
+  const svg = document.querySelector("#scatter-container svg");
+  if (!svg) return;
+  svg.querySelector(".scatter-stop-label")?.remove();
+  if (!_selectedId || !_features) return;
+  const feat = _features.find(f => String(f.properties.stop_id ?? "") === _selectedId);
+  const circ = _dotElements.get(_selectedId);
+  if (!feat || !circ) return;
+  const name  = feat.properties.stop_name || _selectedId;
+  const cx    = +circ.getAttribute("cx");
+  const cy    = +circ.getAttribute("cy");
+  // Nudge label left if too close to right edge
+  const anchor = cx > ML + PW - 50 ? "end" : "start";
+  const offsetX = anchor === "end" ? -7 : 7;
+  const label = el("text", {
+    x: cx + offsetX,
+    y: cy - 5,
+    "font-size": 8.5,
+    fill: "#222",
+    "font-weight": "500",
+    "text-anchor": anchor,
+    "class": "scatter-stop-label",
+    "pointer-events": "none",
+  }, name);
+  svg.appendChild(label);
 }
 
 function drawDistribution(group) {
   const container = document.getElementById("distribution-container");
   if (!container || !_features?.length) return;
 
-  const yKey   = GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate;
-  const yVals  = _features.map(f => +(f.properties[yKey]) || 0);
-  const n      = yVals.length;
-  const counts = BANDS.map(b => yVals.filter(v => v >= b.lo && v < b.hi).length);
+  // Pick score column based on active mode
+  const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
+  const scoreKey   = isBaseline ? "score_baseline" : (GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate);
+
+  // Normalise values so band thresholds (0–1) match the colour scale
+  const rawVals = _features.map(f => +(f.properties[scoreKey]) || 0);
+  const vals    = rawVals.map(v => _normalize(v));
+  const n       = vals.length;
+
+  const counts = BANDS.map(b => vals.filter(v => v >= b.lo && v < b.hi).length);
   const maxCnt = Math.max(...counts, 1);
 
   container.innerHTML = BANDS.map((b, i) => {
-    const pct   = Math.round((counts[i] / n) * 100);
-    const mid   = b.hi === Infinity ? 0.75 : (b.lo + b.hi) / 2;
-    const color = scoreColor(_normalize(mid));
+    const pct   = n > 0 ? Math.round((counts[i] / n) * 100) : 0;
+    const color = scoreColor(i / (BANDS.length - 1));
     const barW  = Math.round((counts[i] / maxCnt) * 100);
+    const rangeTitle = `${b.lo.toFixed(2)}–${b.hi === Infinity ? "1.0+" : b.hi.toFixed(2)}`;
     return `<div class="dist-row">
-      <span class="dist-label" title="${b.lo === 0 ? "0" : b.lo.toFixed(2)}–${b.hi === Infinity ? "1.0+" : b.hi.toFixed(2)}">${b.label}</span>
+      <span class="dist-label" style="color:${b.textColor}" title="${rangeTitle}">${b.label}</span>
       <div class="dist-track"><div class="dist-fill" style="width:${barW}%;background:${color}"></div></div>
       <span class="dist-pct">${pct}%</span>
     </div>`;
@@ -153,6 +188,17 @@ function drawScatter(group) {
   svg.appendChild(el("line", { x1: ML, y1: MT, x2: ML, y2: MT + PH, stroke: "#ddd", "stroke-width": 1 }));
   svg.appendChild(el("line", { x1: ML, y1: MT + PH, x2: ML + PW, y2: MT + PH, stroke: "#ddd", "stroke-width": 1 }));
 
+  // Diagonal reference line y = x (clip to plot bounds)
+  const diagMin = Math.max(xDomMin, yDomMin);
+  const diagMax = Math.min(xDomMax, yDomMax);
+  if (diagMax > diagMin) {
+    svg.appendChild(el("line", {
+      x1: px(diagMin), y1: py(diagMin),
+      x2: px(diagMax), y2: py(diagMax),
+      stroke: "#ccc", "stroke-width": 1, "stroke-dasharray": "4,3",
+    }));
+  }
+
   // Grid + ticks
   const NTICKS = 4;
   for (let i = 0; i <= NTICKS; i++) {
@@ -161,20 +207,20 @@ function drawScatter(group) {
     const yv = yDomMin + t * (yDomMax - yDomMin);
     svg.appendChild(el("line", { x1: px(xv), y1: MT, x2: px(xv), y2: MT + PH, stroke: "#f0f0f0", "stroke-width": 1 }));
     svg.appendChild(el("line", { x1: ML, y1: py(yv), x2: ML + PW, y2: py(yv), stroke: "#f0f0f0", "stroke-width": 1 }));
-    svg.appendChild(el("text", { x: px(xv), y: MT + PH + 11, "font-size": 7.5, fill: "#888", "text-anchor": "middle" }, fmt(xv)));
-    svg.appendChild(el("text", { x: ML - 4, y: py(yv) + 3,   "font-size": 7.5, fill: "#888", "text-anchor": "end"    }, fmt(yv)));
+    svg.appendChild(el("text", { x: px(xv), y: MT + PH + 11, "font-size": 8.5, fill: "#888", "text-anchor": "middle" }, fmt(xv)));
+    svg.appendChild(el("text", { x: ML - 4, y: py(yv) + 3,   "font-size": 8.5, fill: "#888", "text-anchor": "end"    }, fmt(yv)));
   }
 
-  // Axis labels
+  // Axis labels (no arrows)
   svg.appendChild(el("text", {
     x: ML + PW / 2, y: H - 2,
-    "font-size": 8, fill: "#555", "text-anchor": "middle",
-  }, "← Baseline (network coverage)"));
+    "font-size": 9, fill: "#555", "text-anchor": "middle",
+  }, "Baseline (network coverage)"));
   svg.appendChild(el("text", {
     x: 8, y: MT + PH / 2,
-    "font-size": 8, fill: "#555", "text-anchor": "middle",
+    "font-size": 9, fill: "#555", "text-anchor": "middle",
     transform: `rotate(-90, 8, ${MT + PH / 2})`,
-  }, `${yLabel} ↑`));
+  }, yLabel));
 
   // Points — sorted ascending by aggregate so high scores render on top
   const order = props.map((_, i) => i).sort((a, b) => aggVals[a] - aggVals[b]);
@@ -225,4 +271,9 @@ export function updateScatterGroup(group) {
   _currentGroup = group;
   drawScatter(group);
   drawDistribution(group);
+}
+
+/** Re-draw distribution when score mode changes (baseline ↔ contextual). */
+export function updateScatterMode() {
+  drawDistribution(_currentGroup);
 }

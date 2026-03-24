@@ -1,6 +1,6 @@
 import { TABS } from "./config.js";
 import { enableScrollLock, disableScrollLock } from "./state.js";
-import { initScatter, updateScatterGroup, setScatterSelectCallback, highlightScatterStop } from "./scatter.js";
+import { initScatter, updateScatterGroup, updateScatterMode, setScatterSelectCallback, highlightScatterStop } from "./scatter.js";
 import {
   showOverview,
   showCatchmentRing,
@@ -17,7 +17,7 @@ import {
   setScoreMode,
   setStopSelectCallback,
   highlightMapStop,
-  setHeatmapYellowThreshold,
+  resizeMap,
   showRailPlaceholder,
   showCyclingPlaceholder,
   showGreenPlaceholder,
@@ -172,11 +172,18 @@ export function initToolPanel() {
       const isHidden = popup.classList.contains("hidden");
       closeAllPopups();
       if (isHidden) {
-        // Position popup to the right of the tool panel
-        const panelRect = document.getElementById("tool-panel").getBoundingClientRect();
-        const btnRect = btn.getBoundingClientRect();
-        const top = Math.min(btnRect.top, window.innerHeight - 40); // keep on screen
-        popup.style.left = `${panelRect.right + 8}px`;
+        const btnRect  = btn.getBoundingClientRect();
+        const top      = Math.min(btnRect.top, window.innerHeight - 40);
+        const inChartPanel = !!btn.closest("#chart-panel");
+        if (inChartPanel) {
+          // Position popup to the LEFT of the button (right panel buttons)
+          const popupW = 288;
+          popup.style.left = `${Math.max(4, btnRect.left - popupW - 8)}px`;
+        } else {
+          // Position popup to the RIGHT of the tool panel (left panel buttons)
+          const panelRect = document.getElementById("tool-panel").getBoundingClientRect();
+          popup.style.left = `${panelRect.right + 8}px`;
+        }
         popup.style.top = `${top}px`;
         popup.classList.remove("hidden");
         if (backdrop) backdrop.classList.remove("hidden");
@@ -217,22 +224,17 @@ export function initToolPanel() {
       document.querySelectorAll(".mode-active-desc").forEach(d => d.classList.add("hidden"));
       document.getElementById(`mode-desc-${mode}`)?.classList.remove("hidden");
       setScoreMode(mode);
+      // Update chart panel header label
+      const modeLabel = document.getElementById("chart-mode-label");
+      if (modeLabel) modeLabel.textContent = mode === "baseline" ? "Baseline mode" : "Contextual mode";
+      // Redraw distribution for the new mode
+      updateScatterMode();
     });
   });
 
   // Cross-highlight: map stop click ↔ scatter dot click
   setStopSelectCallback(id => highlightScatterStop(id));
   setScatterSelectCallback(id => highlightMapStop(id));
-
-  // Temp: heatmap yellow threshold slider
-  const yellowSlider = document.getElementById("yellow-thresh");
-  const yellowValEl  = document.getElementById("yellow-val");
-  if (yellowSlider) {
-    yellowSlider.addEventListener("input", () => {
-      yellowValEl.textContent = yellowSlider.value;
-      setHeatmapYellowThreshold(+yellowSlider.value);
-    });
-  }
 
   // CTA button inside the last narrative step (wired initially; re-wired on tab switch)
   const enterBtn = document.getElementById("btn-enter-tool");
@@ -248,7 +250,56 @@ export function initToolPanel() {
     });
   }
 
-  // Back to narrative button (inside tool panel)
-  const backBtn = document.getElementById("btn-back-narrative");
-  if (backBtn) backBtn.addEventListener("click", backToNarrative);
+  // Drag-to-resize chart panel handle
+  const handle = document.getElementById("chart-resize-handle");
+  if (handle) {
+    let _startX, _startW;
+    handle.addEventListener("mousedown", (e) => {
+      _startX = e.clientX;
+      _startW = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--chart-panel-w")
+      ) || 280;
+      handle.classList.add("dragging");
+      const onMove = (ev) => {
+        const newW = Math.max(260, Math.min(520, _startW + (_startX - ev.clientX)));
+        document.documentElement.style.setProperty("--chart-panel-w", `${newW}px`);
+        resizeMap();
+      };
+      const onUp = () => {
+        handle.classList.remove("dragging");
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      e.preventDefault();
+    });
+  }
+
+  // Neighbourhood selector — update population stats and demographic bars
+  const NEIGHBOURHOOD_DATA = {
+    "":           { pop: "356k", children: 18, working_age: 74, elderly: 8 },
+    "indre":      { pop:  "88k", children: 16, working_age: 76, elderly: 8 },
+    "ydre":       { pop:  "95k", children: 20, working_age: 72, elderly: 8 },
+    "nordvest":   { pop:  "72k", children: 17, working_age: 74, elderly: 9 },
+    "utterslev":  { pop:  "54k", children: 19, working_age: 72, elderly: 9 },
+    "bispebjerg": { pop:  "47k", children: 18, working_age: 73, elderly: 9 },
+  };
+
+  function _updateDemoBars(key) {
+    const d = NEIGHBOURHOOD_DATA[key] || NEIGHBOURHOOD_DATA[""];
+    const kpi = document.getElementById("kpi-population");
+    if (kpi) kpi.textContent = d.pop;
+    for (const [suffix, field] of [
+      ["children", "children"], ["working-age", "working_age"], ["elderly", "elderly"]
+    ]) {
+      const fill = document.getElementById(`bar-${suffix}`);
+      const pct  = document.getElementById(`pct-${suffix}`);
+      if (fill) fill.style.width = `${d[field]}%`;
+      if (pct)  pct.textContent  = `${d[field]}%`;
+    }
+  }
+
+  const nSel = document.getElementById("neighbourhood-select");
+  if (nSel) nSel.addEventListener("change", () => _updateDemoBars(nSel.value));
 }

@@ -10,6 +10,8 @@ let _activeDemoFields = null;
 let _rampLo = null;
 let _rampHi = null;
 let _stopSelectCallback = null;
+let _activeGroup = "aggregate";
+let _activeMode  = "contextual";
 
 const STOP_SCORE_FIELD = {
   baseline:    "score_baseline",
@@ -128,10 +130,9 @@ function _addLayers() {
       "heatmap-color": [
         "interpolate", ["linear"], ["heatmap-density"],
         0,    "rgba(255,255,255,0)",
-        0.25, "rgba(160,160,160,0.6)",
-        0.7,  "rgba(40,40,40,0.88)",
-        0.88, "rgba(20,18,0,0.96)",
-        1.0,  "rgba(215,170,0,1)",
+        0.25, "rgba(160,160,160,0.5)",
+        0.7,  "rgba(40,40,40,0.85)",
+        1.0,  "rgba(10,10,10,0.97)",
       ],
     },
   });
@@ -210,57 +211,60 @@ function _addLayers() {
   });
 }
 
+// Band definitions for stop popups (mirrors scatter.js BANDS — keep in sync)
+const _POPUP_BANDS = [
+  { lo: 0,    hi: 0.20,     label: "Low benefit", color: "#c94e00" },
+  { lo: 0.20, hi: 0.40,     label: "Moderate",    color: "#7a7a7a" },
+  { lo: 0.40, hi: 0.60,     label: "Good",        color: "#3a6ea5" },
+  { lo: 0.60, hi: 0.80,     label: "High",        color: "#1d5490" },
+  { lo: 0.80, hi: Infinity, label: "Optimal",     color: "#004e98" },
+];
+
+function _getBand(normScore) {
+  return _POPUP_BANDS.find(b => normScore >= b.lo && normScore < b.hi) || _POPUP_BANDS[_POPUP_BANDS.length - 1];
+}
+
+const _GROUP_LABEL = {
+  aggregate: "Aggregate", working_age: "Working-age",
+  elderly: "Elderly",     children: "Children",
+};
+
 function _addPopups() {
-  const segLayers = [
-    "segments-aggregate",
-    "segments-working_age",
-    "segments-elderly",
-    "segments-children",
-  ];
-
-  // Click popup on scored bus segments
-  for (const layerId of segLayers) {
-    map.on("click", layerId, (e) => {
-      const p = e.features[0].properties;
-      const pct = (v) => (v != null ? (v * 100).toFixed(0) + "%" : "—");
-      new maplibregl.Popup({ maxWidth: "260px" })
-        .setLngLat(e.lngLat)
-        .setHTML(`
-          <strong>Bus corridor</strong><br>
-          <span style="color:#666;font-size:0.85em">Routes: ${p.route_names || "—"}</span><br>
-          <br>
-          <table style="font-size:0.9em;border-collapse:collapse;width:100%">
-            <tr><td>Aggregate</td><td style="text-align:right"><strong>${pct(p.score_aggregate_mid)}</strong></td></tr>
-            <tr><td>Working-age</td><td style="text-align:right">${pct(p.score_working_age_mid_share)}</td></tr>
-            <tr><td>Elderly</td><td style="text-align:right">${pct(p.score_elderly_mid_share)}</td></tr>
-            <tr><td>Children</td><td style="text-align:right">${pct(p.score_children_mid_share)}</td></tr>
-          </table>
-        `)
-        .addTo(map);
-    });
-    map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
-  }
-
-  // Click popup on existing bus stops (context stops outside district are not interactive)
+  // Tooltips only on bus stops — not on segment/route layers
   map.on("click", "stops-layer", (e) => {
     const p = e.features[0].properties;
     if (p.context) return;
     highlightMapStop(p.stop_id);
     if (_stopSelectCallback) _stopSelectCallback(p.stop_id);
-    const pct = (v) => (v != null && !isNaN(+v) ? (+v * 100).toFixed(0) + "%" : "—");
-    new maplibregl.Popup({ maxWidth: "240px" })
+
+    const dec = (v) => (v != null && !isNaN(+v) ? (+v).toFixed(2) : "—");
+
+    // Use active group + mode to determine the category label
+    const scoreField = _activeMode === "baseline"
+      ? "score_baseline"
+      : (STOP_SCORE_FIELD[_activeGroup] || STOP_SCORE_FIELD.aggregate);
+    const rawScore = +(p[scoreField]) || 0;
+    const normScore = (_rampLo !== null && _rampHi !== _rampLo)
+      ? Math.max(0, Math.min(1, (rawScore - _rampLo) / (_rampHi - _rampLo)))
+      : rawScore;
+    const band = _getBand(normScore);
+    const modeName = _activeMode === "baseline" ? "Baseline" : "Contextual";
+
+    new maplibregl.Popup({ maxWidth: "250px" })
       .setLngLat(e.lngLat)
       .setHTML(`
-        <strong>${p.stop_name || "Bus stop"}</strong><br>
-        ${p.route_names ? `<span style="font-size:0.85em">Routes: ${p.route_names}</span><br>` : ""}
+        <strong>${p.stop_name || "Bus stop"}</strong>
+        ${p.route_names ? `<div style="font-size:0.78em;color:#666;margin:2px 0">Routes: ${p.route_names}</div>` : ""}
+        <div class="popup-category" style="color:${band.color}">${band.label}</div>
+        <div class="popup-mode">(${modeName} mode)</div>
         ${p.score_aggregate_mid != null ? `
-        <br><table style="font-size:0.9em;border-collapse:collapse;width:100%">
-          <tr><td>Aggregate</td><td style="text-align:right"><strong>${pct(p.score_aggregate_mid)}</strong></td></tr>
-          <tr><td>Working-age</td><td style="text-align:right">${pct(p.score_working_age_mid_share)}</td></tr>
-          <tr><td>Elderly</td><td style="text-align:right">${pct(p.score_elderly_mid_share)}</td></tr>
-          <tr><td>Children</td><td style="text-align:right">${pct(p.score_children_mid_share)}</td></tr>
-        </table>` : ""}
+        <hr class="popup-hr">
+        <div class="popup-score-row"><span>Aggregate</span><span>${dec(p.score_aggregate_mid)}</span></div>
+        <hr class="popup-hr">
+        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_working_age_mid_share)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_elderly_mid_share)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_children_mid_share)}</span></div>
+        ` : ""}
       `)
       .addTo(map);
   });
@@ -345,6 +349,7 @@ export function enterInteractiveToolBasemap() {
 // ── Score mode toggle ────────────────────────────────────────────────────────
 
 export function setScoreMode(mode) {
+  _activeMode = mode;
   const groupSection = document.getElementById("group-selector-section");
   if (groupSection) groupSection.classList.toggle("hidden", mode === "baseline");
 
@@ -429,6 +434,7 @@ export function backToNarrative() {
 // ── Interactive tool: group toggle ──────────────────────────────────────────
 
 export function setActiveGroup(group) {
+  _activeGroup = group;
   const allLayers = [
     "segments-aggregate",
     "segments-working_age",
@@ -535,19 +541,8 @@ function _updateLegend() {
 /** Returns the data-driven ramp domain so scatter.js can use identical colors. */
 export function getRampDomain() { return { lo: _rampLo, hi: _rampHi }; }
 
-/** Temporary: dial in the near-black → yellow transition in the demographics heatmap. */
-export function setHeatmapYellowThreshold(t) {
-  if (!map.getLayer("demographics-heatmap")) return;
-  const hi = Math.max(0.71, Math.min(0.99, +t));
-  map.setPaintProperty("demographics-heatmap", "heatmap-color", [
-    "interpolate", ["linear"], ["heatmap-density"],
-    0,    "rgba(255,255,255,0)",
-    0.25, "rgba(160,160,160,0.6)",
-    0.7,  "rgba(40,40,40,0.88)",
-    hi,   "rgba(20,18,0,0.96)",
-    1.0,  "rgba(215,170,0,1)",
-  ]);
-}
+/** Trigger a MapLibre resize (call after the map container changes dimensions). */
+export function resizeMap() { if (map) requestAnimationFrame(() => map.resize()); }
 
 /** Register a callback fired when the user clicks a stop on the map. */
 export function setStopSelectCallback(fn) { _stopSelectCallback = fn; }

@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 5 active — bus route export pipeline complete; baseline scoring implemented; interactive tool wired with dynamic ramp, scatter plot, and demographics heatmap
+**Current Phase**: Phase 5 active — UI polish round 2 complete; tooltip redesign, drag-resize panel, 5-band scoring, population section, scatter improvements
 **Last Updated**: March 2026
 
 > This project follows the reorientation decisions documented in
@@ -214,9 +214,11 @@ Output folder: `data/integrated/`
 - [x] **Dynamic color ramp** — domain computed from actual data range (0.117–0.530); orange=low (#ff6700), blue=high (#004e98); applied to segments, stops, and scatter plot dots
 - [x] **Baseline mode** — score mode toggle hides demographic group selector; segments/stops recolor to `score_baseline`; legend title switches to "Network coverage"
 - [x] **Contextual mode** — group selector visible; segments/stops recolor to selected group's `score_*_mid_share`; legend title shows "Health benefit score"
-- [x] **Demographics heatmap** — grey → dark → golden-yellow at density core (≥0.88); opacity 0.60, zoom-independent radius; temp threshold slider in Overlays panel for tuning
+- [x] **Demographics heatmap** — grey → near-black ramp (no yellow); opacity 0.60; threshold slider removed
 - [x] **Context stops** — stops outside district boundary (`context=true`) not clickable, excluded from scatter/distribution
-- [x] **Population stat** — "356k population in district" moved below scatter; "Scored segments" KPI removed
+- [x] **Population stat** — inline "Population in [neighbourhood ▼]" dropdown (no box); three horizontal demographic bars (Children/Working-age/Elderly) in blue shades; dummy data updates on neighbourhood select
+- [x] **UI polish round 1** — score distribution card with ⓘ, 6-band thresholds, colour-coded labels, scatter subtitle, dashed diagonal, decimal scores, age bar, green spaces placeholder card, panel resize, left panel semi-transparent
+- [x] **UI polish round 2** — bands reduced 6→5 (0–0.2/0.4/0.6/0.8/1); tooltip redesigned (dynamic category from active group+mode, structured score rows, mode label); drag-to-resize chart panel (JS handle replaces broken CSS resize); info popups fixed (backdrop-filter stacking context removed from tool-panel); popup positioning aware of left/right panel context; overlays reordered (Bus stops → Population → Green spaces, "Demographics" renamed "Population"); distribution card renamed + subtitle + % values; scatter stop-name annotation on selected dot; scatter font sizes +1pt; legend moved to bottom-left; "Population in [select]" inline label
 - [ ] **Map transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations
 - [ ] Wire scenario rail to `score_{group}_{scenario}` columns (low/high not yet computed)
 - [ ] Segment hover/click popup: mid score + [low, high] range
