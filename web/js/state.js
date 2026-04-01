@@ -3,8 +3,8 @@
 let _lockY = null;
 let _scrollHandler = null;
 
-export function enableScrollLock() {
-  _lockY = window.scrollY;
+export function enableScrollLock(lockY) {
+  _lockY = lockY !== undefined ? lockY : window.scrollY;
   _scrollHandler = () => {
     if (_lockY !== null && window.scrollY > _lockY) {
       window.scrollTo(0, _lockY);

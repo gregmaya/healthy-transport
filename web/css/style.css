@@ -148,15 +148,24 @@ body.is-interactive .scroll-container {
   position: relative;
 }
 
-.step-number {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.5rem;
-  font-size: 2rem;
+.step-tag {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  background: var(--blue-1);
+  color: var(--blue-4);
+  border-radius: 20px;
+  font-size: 0.65rem;
   font-weight: 700;
-  color: var(--blue-1);
-  line-height: 1;
-  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.6rem;
+}
+
+.step-svg {
+  display: block;
+  width: 100%;
+  margin-top: 1.2rem;
+  opacity: 0.85;
 }
 
 .step-inner h2 {
@@ -171,6 +180,26 @@ body.is-interactive .scroll-container {
   font-size: 0.95rem;
   line-height: 1.65;
   color: var(--muted);
+}
+
+.step-body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.step-body p { margin-bottom: 0.5rem; }
+
+.step-body ul {
+  margin-top: 0.75rem;
+  padding-left: 1.1rem;
+}
+
+.step-body li { margin-bottom: 0.55rem; }
+
+.step-inner strong {
+  font-weight: 700;
+  color: var(--blue-4);
 }
 
 /* ── Tool panel (step 6) ──────────────────────────────────────────────────── */
@@ -447,30 +476,119 @@ body.is-interactive .scroll-container {
 
 .toggle-row--disabled input { cursor: default; }
 
-/* ── Benefit curves overlay (step 3) ─────────────────────────────────────── */
+/* ── Narrative image panel (base + scroll-driven layers) ─────────────────── */
 
-#curves-overlay {
+#illustration-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  background: var(--bg);
+  animation: stepIlluIn 0.35s ease;
+}
+
+#illustration-panel::before,
+#illustration-panel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 22%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#illustration-panel::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg), transparent);
+}
+
+#illustration-panel::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg), transparent);
+}
+
+.illu-image-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.illu-base,
+.illu-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.illu-layer {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.illu-layer--active {
+  opacity: 1;
+}
+
+/* ── Step illustration overlay (map right-side, synced with scroll) ───────── */
+
+@keyframes stepIlluIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#step-illustration {
   position: absolute;
   bottom: 2rem;
-  right: 2rem;
-  background: var(--panel);
+  left: 2rem;
+  transform: none;
+  width: 380px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 1rem 1.2rem;
   box-shadow: var(--shadow);
-  width: 320px;
   z-index: 50;
+  animation: stepIlluIn 0.35s ease;
 }
 
-#curves-overlay h4 {
-  font-size: 0.8rem;
-  color: var(--blue-4);
-  margin-bottom: 0.5rem;
-  font-weight: 600;
+/* Hide the standalone legend strip when the combined scatter+legend box is visible */
+#map:has(#step-illustration:not(.illu-full)) #legend {
+  display: none;
 }
 
-#curves-overlay svg {
+/* Fullscreen mode: covers the entire map, map content hidden behind it */
+#step-illustration.illu-full {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+#step-illustration.illu-full svg {
+  width: min(92%, 560px);
+  height: auto;
+}
+
+#step-illustration svg {
   width: 100%;
   height: auto;
+  display: block;
   overflow: visible;
 }
 
@@ -918,5 +1036,5 @@ body.is-interactive #chart-resize-handle.dragging {
     order: 2;
     padding: 2rem 0 4rem;
   }
-  #curves-overlay { width: calc(100vw - 2rem); right: 1rem; bottom: 1rem; }
+  #step-illustration { width: calc(100vw - 2rem); left: 1rem; transform: none; bottom: 1rem; }
 }

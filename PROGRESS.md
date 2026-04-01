@@ -1,7 +1,7 @@
 # Progress Tracker
 
-**Current Phase**: Phase 5 active — UI polish round 2 complete; tooltip redesign, drag-resize panel, 5-band scoring, population section, scatter improvements
-**Last Updated**: March 2026
+**Current Phase**: Phase 9 complete — Bus narrative redesign: tag pills, rewritten 6-step copy, SVG illustrations, real-data scatter snapshot, building footprints layer, map lock during narrative, scroll fix, image fade, tab→narrative return
+**Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
 > [`docs/REORIENTATION_BRIEF.md`](docs/REORIENTATION_BRIEF.md).
@@ -219,6 +219,7 @@ Output folder: `data/integrated/`
 - [x] **Population stat** — inline "Population in [neighbourhood ▼]" dropdown (no box); three horizontal demographic bars (Children/Working-age/Elderly) in blue shades; dummy data updates on neighbourhood select
 - [x] **UI polish round 1** — score distribution card with ⓘ, 6-band thresholds, colour-coded labels, scatter subtitle, dashed diagonal, decimal scores, age bar, green spaces placeholder card, panel resize, left panel semi-transparent
 - [x] **UI polish round 2** — bands reduced 6→5 (0–0.2/0.4/0.6/0.8/1); tooltip redesigned (dynamic category from active group+mode, structured score rows, mode label); drag-to-resize chart panel (JS handle replaces broken CSS resize); info popups fixed (backdrop-filter stacking context removed from tool-panel); popup positioning aware of left/right panel context; overlays reordered (Bus stops → Population → Green spaces, "Demographics" renamed "Population"); distribution card renamed + subtitle + % values; scatter stop-name annotation on selected dot; scatter font sizes +1pt; legend moved to bottom-left; "Population in [select]" inline label
+- [x] **Phase 9: Bus narrative redesign** — Tab renamed "Bus Stops"→"Bus"; step tag pills (THE PROBLEM / THE EVIDENCE / THE MODEL / THE DATA / THE ANALYSIS / EXPLORE); all 6 steps rewritten with accessible but technically credible copy; `buildSteps()` supports block-level HTML bodies; step 3 fullscreen SVG (benefit curves: grey zones, linearGradient right fade, symmetric beziers, Y-axis labels, title); step 4 adds greyscale building footprints layer + `norrebro_building_footprints.geojson` export; step 5 scatter SVG pre-computed from real `norrebro_stops.geojson` data (85 internal stops, STOPS color ramp, diagonal reference, legend strip, ring callout on middle-cluster point, left-aligned box); step 6 body replaced SVG with intro + bold equilibrium sentence + 3 bullets (Health/Catchment/Green); map locked during narrative (`_lockMap`/`_unlockMap`), unlocked only on entering interactive tool; `showScoredNetwork`/`showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)` for viewport-adaptive framing; steps 1–2 image panel with 22% top/bottom fade overlay; scroll lock on last step deferred to card-bottom position so CTA is reachable; active tab button returns to chapter 1 from interactive mode
 - [ ] **Map transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations
 - [ ] Wire scenario rail to `score_{group}_{scenario}` columns (low/high not yet computed)
 - [ ] Segment hover/click popup: mid score + [low, high] range

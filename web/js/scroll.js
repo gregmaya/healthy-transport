@@ -21,6 +21,10 @@ import {
   showRailPlaceholder,
   showCyclingPlaceholder,
   showGreenPlaceholder,
+  showStepOverlay,
+  removeStepOverlay,
+  showImageOverlay,
+  removeImagePanel,
 } from "./map.js";
 
 // enterInteractiveTool is intentionally absent from TRANSITION_FNS —
@@ -51,9 +55,9 @@ export function buildSteps(steps) {
     div.dataset.step = i;
     div.innerHTML = `
       <div class="step-inner">
-        <span class="step-number">${String(i + 1).padStart(2, "0")}</span>
+        ${step.tag ? `<span class="step-tag">${step.tag}</span>` : ""}
         <h2>${step.title}</h2>
-        <p>${step.body}</p>
+        <div class="step-body">${step.body}</div>
         ${isLast ? '<button class="cta-explore" id="btn-enter-tool">Explore the map →</button>' : ""}
       </div>`;
     container.appendChild(div);
@@ -83,12 +87,28 @@ export function initScroll(steps) {
       element.classList.add("active");
 
       if (index === lastIndex) {
-        enableScrollLock();
+        // Lock at the point where the card bottom reaches the viewport bottom,
+        // so the user can read the full card and reach the CTA before being locked.
+        const cardBottom = element.getBoundingClientRect().bottom + window.scrollY;
+        const lockY = Math.max(window.scrollY, cardBottom - window.innerHeight);
+        enableScrollLock(lockY);
       }
 
       const fnName = steps[index].mapFn;
       const fn = TRANSITION_FNS[fnName];
       if (fn) fn();
+
+      const step = steps[index];
+      if (step.images) {
+        showImageOverlay(step.images);
+        removeStepOverlay();
+      } else if (step.svg) {
+        showStepOverlay(step.svg, step.svgFullscreen || false);
+        removeImagePanel();
+      } else {
+        removeStepOverlay();
+        removeImagePanel();
+      }
     })
     .onStepExit(({ index, direction }) => {
       if (index === lastIndex && direction === "up") {
@@ -102,10 +122,19 @@ export function initScroll(steps) {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 
 export function switchTab(tabId) {
-  if (tabId === _activeTabId) return;
+  const isInteractive = document.body.classList.contains("is-interactive");
+
+  if (tabId === _activeTabId) {
+    // Clicking the active tab while in interactive mode returns to chapter 1
+    if (isInteractive) {
+      backToNarrative();
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+    return;
+  }
 
   // Exit interactive mode if currently active
-  if (document.body.classList.contains("is-interactive")) {
+  if (isInteractive) {
     backToNarrative();
   }
 

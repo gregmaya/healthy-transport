@@ -2,7 +2,8 @@ import { DATA, MAP_INIT, NORREBRO_BOUNDS, SCORE_RAMP, GROUP_RAMPS, TABS } from "
 import { disableScrollLock } from "./state.js";
 
 let map;
-let curvesPanel = null;
+let _stepOverlay  = null;
+let _imagePanel   = null;
 let _segmentFeatures = null;
 let _stopFeatures = null;
 let _dynamicRampApplied = false;
@@ -58,7 +59,8 @@ export function initMap() {
     _addLayers();
     _addAttribution();
     _addPopups();
-    // Trigger the initial narrative state so layers are visible from the start
+    // Narrative mode: map is a locked viewport, not an interactive tool
+    _lockMap();
     showOverview();
   });
 
@@ -73,6 +75,7 @@ function _addSources() {
   map.addSource("segments-src",     { type: "geojson", data: DATA.segments });
   map.addSource("stops-src",        { type: "geojson", data: DATA.stops });
   map.addSource("demographics-src", { type: "geojson", data: DATA.demographics });
+  map.addSource("footprints-src",   { type: "geojson", data: DATA.footprints });
 
   // Pre-fetch segment features; apply dynamic ramp once loaded
   fetch(DATA.segments).then(r => r.json()).then(d => {
@@ -134,6 +137,26 @@ function _addLayers() {
         0.7,  "rgba(40,40,40,0.85)",
         1.0,  "rgba(10,10,10,0.97)",
       ],
+    },
+  });
+
+  // Building footprints — greyscale, height-tinted, subtle. Hidden until step 4.
+  map.addLayer({
+    id: "footprints-layer",
+    type: "fill",
+    source: "footprints-src",
+    layout: { visibility: "none" },
+    paint: {
+      // Taller buildings → slightly darker grey
+      "fill-color": [
+        "interpolate", ["linear"], ["get", "floors"],
+        1, "#d8d8d8",
+        4, "#b0b0b0",
+        8, "#888888",
+       12, "#606060",
+      ],
+      "fill-opacity": 0.35,
+      "fill-outline-color": "rgba(80,80,80,0.15)",
     },
   });
 
@@ -281,46 +304,26 @@ function _addAttribution() {
 
 // ── Scroll-step transition functions ────────────────────────────────────────
 
-export function showOverview() {
-  _hideAllScoreLayers();
-  _setVisibility("stops-layer", "visible");
-  _removeCurvesPanel();
-  map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
-}
+// Steps 1–3 are fully covered by image/SVG overlays — no map navigation needed.
+export function showOverview()      { /* map hidden behind image panel */ }
+export function showCatchmentRing() { /* map hidden behind image panel */ }
+export function showBenefitCurves() { /* map hidden behind fullscreen SVG overlay */ }
 
-export function showCatchmentRing() {
-  _hideAllScoreLayers();
-  _setVisibility("stops-layer", "none");
-  _removeCurvesPanel();
-
-  // Fly to a representative residential block in Nørrebro
-  map.flyTo({ center: [12.545, 55.690], zoom: 15.5, duration: 1400 });
-
-  // Animate a growing circle representing the catchment zone
-  _animateCatchmentRing([12.545, 55.690]);
-}
-
-export function showBenefitCurves() {
-  _hideAllScoreLayers();
-  _setVisibility("stops-layer", "none");
-  map.flyTo({ center: MAP_INIT.center, zoom: MAP_INIT.zoom, duration: 1000 });
-  _showCurvesPanel();
-}
-
+// Steps 4–5 share one locked view: district bounding box with buffer, instant (duration 0).
 export function showScoredNetwork() {
   _setVisibility("segments-aggregate", "visible");
   _setVisibility("bus-routes-context", "visible");
+  _setVisibility("footprints-layer", "visible");
   _setVisibility("stops-layer", "none");
-  _removeCurvesPanel();
-  _removeCatchmentRing();
-  map.flyTo({ center: MAP_INIT.center, zoom: MAP_INIT.zoom, duration: 1000 });
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 50, duration: 0 });
 }
 
 export function showGapAnalysis() {
   _setVisibility("segments-aggregate", "visible");
   _setVisibility("bus-routes-context", "visible");
   _setVisibility("stops-layer", "visible");
-  _removeCurvesPanel();
+  _setVisibility("footprints-layer", "none");
+  // Same view as step 4 — no camera change
 }
 
 export function enterInteractiveTool() {
@@ -328,9 +331,12 @@ export function enterInteractiveTool() {
   _setVisibility("bus-routes-context", "visible");
   _setVisibility("stops-layer", "visible");
   _removePlaceholderOverlay();
+  removeStepOverlay();
+  removeImagePanel();
   document.getElementById("tool-panel").classList.remove("hidden");
   document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
+  _unlockMap();
   requestAnimationFrame(() => map.resize());
   setScoreMode("contextual");
 }
@@ -343,6 +349,7 @@ export function enterInteractiveToolBasemap() {
   document.getElementById("tool-panel").classList.remove("hidden");
   document.getElementById("chart-panel").classList.remove("hidden");
   document.body.classList.add("is-interactive");
+  _unlockMap();
   requestAnimationFrame(() => map.resize());
 }
 
@@ -395,7 +402,6 @@ function _removePlaceholderOverlay() {
 export function showRailPlaceholder() {
   _hideAllScoreLayers();
   _setVisibility("stops-layer", "none");
-  _removeCurvesPanel();
   _removeCatchmentRing();
   _showPlaceholderOverlay("Rail scoring — data pipeline in progress");
   map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
@@ -404,7 +410,6 @@ export function showRailPlaceholder() {
 export function showCyclingPlaceholder() {
   _hideAllScoreLayers();
   _setVisibility("stops-layer", "none");
-  _removeCurvesPanel();
   _removeCatchmentRing();
   _showPlaceholderOverlay("Cycling analysis — methodology in development");
   map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
@@ -413,7 +418,6 @@ export function showCyclingPlaceholder() {
 export function showGreenPlaceholder() {
   _hideAllScoreLayers();
   _setVisibility("stops-layer", "none");
-  _removeCurvesPanel();
   _removeCatchmentRing();
   _showPlaceholderOverlay("Green space scoring — data pipeline in progress");
   map.fitBounds(NORREBRO_BOUNDS, { padding: 40, duration: 1200 });
@@ -424,6 +428,7 @@ export function backToNarrative() {
   document.getElementById("tool-panel").classList.add("hidden");
   document.getElementById("chart-panel").classList.add("hidden");
   document.body.classList.remove("is-interactive");
+  _lockMap();
   requestAnimationFrame(() => {
     map.resize();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -565,6 +570,24 @@ function _setVisibility(layerId, visibility) {
   }
 }
 
+function _lockMap() {
+  map.scrollZoom.disable();
+  map.dragPan.disable();
+  map.dragRotate.disable();
+  map.doubleClickZoom.disable();
+  map.touchZoomRotate.disable();
+  map.keyboard.disable();
+}
+
+function _unlockMap() {
+  map.scrollZoom.enable();
+  map.dragPan.enable();
+  map.dragRotate.enable();
+  map.doubleClickZoom.enable();
+  map.touchZoomRotate.enable();
+  map.keyboard.enable();
+}
+
 function _hideAllScoreLayers() {
   for (const layer of [
     "segments-aggregate",
@@ -572,6 +595,7 @@ function _hideAllScoreLayers() {
     "segments-elderly",
     "segments-children",
     "bus-routes-context",
+    "footprints-layer",
   ]) {
     _setVisibility(layer, "none");
   }
@@ -639,48 +663,60 @@ function _circleGeoJSON(center, radiusM) {
   return { type: "Feature", geometry: { type: "LineString", coordinates: coords } };
 }
 
-// SVG benefit-curve panel (step 3)
-function _showCurvesPanel() {
-  _removeCurvesPanel();
-  curvesPanel = document.createElement("div");
-  curvesPanel.id = "curves-overlay";
-  curvesPanel.innerHTML = `
-    <h4>Health benefit B(d) by group</h4>
-    <svg viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
-      <g transform="translate(30,10)">
-        <!-- Axes -->
-        <line x1="0" y1="120" x2="260" y2="120" stroke="#aaa" stroke-width="1"/>
-        <line x1="0" y1="0"   x2="0"   y2="120" stroke="#aaa" stroke-width="1"/>
-        <!-- x labels -->
-        <text x="0"   y="133" font-size="8" fill="#666" text-anchor="middle">0</text>
-        <text x="65"  y="133" font-size="8" fill="#666" text-anchor="middle">300m</text>
-        <text x="130" y="133" font-size="8" fill="#666" text-anchor="middle">600m</text>
-        <text x="195" y="133" font-size="8" fill="#666" text-anchor="middle">900m</text>
-        <text x="260" y="133" font-size="8" fill="#666" text-anchor="middle">1200m</text>
-        <!-- Working age (peaks ~500m, d_max 1200m) -->
-        <path d="M0,117 C30,115 50,100 65,60 C80,20 95,5 108,5 C121,5 136,20 152,60 C175,110 200,117 260,117"
-              fill="none" stroke="#2171b5" stroke-width="2"/>
-        <!-- Elderly (peaks ~300m, d_max 700m) -->
-        <path d="M0,115 C20,105 40,60 65,10 C80,2 90,2 100,10 C120,40 145,105 152,117 C200,117 260,117 260,117"
-              fill="none" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
-        <!-- Children (peaks ~250m, d_max 600m) -->
-        <path d="M0,116 C15,108 35,65 55,12 C65,3 75,3 85,12 C100,40 120,110 130,117 C200,117 260,117 260,117"
-              fill="none" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
-        <!-- Legend -->
-        <line x1="5"  y1="145" x2="25" y2="145" stroke="#2171b5" stroke-width="2"/>
-        <text x="28" y="148" font-size="8" fill="#333">Working-age</text>
-        <line x1="90" y1="145" x2="110" y2="145" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
-        <text x="113" y="148" font-size="8" fill="#333">Elderly</text>
-        <line x1="160" y1="145" x2="180" y2="145" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
-        <text x="183" y="148" font-size="8" fill="#333">Children</text>
-      </g>
-    </svg>`;
-  document.getElementById("map").appendChild(curvesPanel);
+// ── Step illustration overlay (driven by scroll position via scroll.js) ──────
+
+export function showStepOverlay(svgHtml, fullscreen = false) {
+  removeStepOverlay();
+  _stepOverlay = document.createElement("div");
+  _stepOverlay.id = "step-illustration";
+  if (fullscreen) _stepOverlay.classList.add("illu-full");
+  _stepOverlay.innerHTML = svgHtml;
+  document.getElementById("map").appendChild(_stepOverlay);
 }
 
-function _removeCurvesPanel() {
-  if (curvesPanel) {
-    curvesPanel.remove();
-    curvesPanel = null;
+export function removeStepOverlay() {
+  if (_stepOverlay) {
+    _stepOverlay.remove();
+    _stepOverlay = null;
+  }
+}
+
+// ── Narrative image panel (base image + scroll-driven layers) ─────────────────
+
+export function showImageOverlay(config) {
+  const mapEl = document.getElementById("map");
+
+  // If panel already exists with the same base, just swap the active layer
+  if (_imagePanel && _imagePanel.dataset.base === config.base) {
+    _imagePanel.querySelectorAll(".illu-layer").forEach((el) => {
+      el.classList.toggle("illu-layer--active", el.dataset.id === config.activeId);
+    });
+    return;
+  }
+
+  // Build a fresh panel with all layers pre-loaded
+  removeImagePanel();
+  _imagePanel = document.createElement("div");
+  _imagePanel.id = "illustration-panel";
+  _imagePanel.dataset.base = config.base;
+
+  const layersHtml = config.layers
+    .map((l) => `<img class="illu-layer${l.id === config.activeId ? " illu-layer--active" : ""}"
+         data-id="${l.id}" src="${l.src}" alt="">`)
+    .join("\n");
+
+  _imagePanel.innerHTML = `
+    <div class="illu-image-stack">
+      <img class="illu-base" src="${config.base}" alt="">
+      ${layersHtml}
+    </div>`;
+
+  mapEl.appendChild(_imagePanel);
+}
+
+export function removeImagePanel() {
+  if (_imagePanel) {
+    _imagePanel.remove();
+    _imagePanel = null;
   }
 }

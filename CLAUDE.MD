@@ -214,15 +214,40 @@ Each tab is a self-contained scrollytelling narrative (4–6 steps) that hands o
 
 ---
 
+## Narrative–Interactive Scatter Coupling
+
+The scatter chart in the narrative (Bus tab, step 5 "The Analysis") and the interactive scatter in the tool panel (`scatter.js`) must always show the same data. The narrative version is a **static SVG snapshot** embedded in `web/js/config.js` (`STEPS_BUS[4].svg`).
+
+**If the scoring pipeline re-runs**, regenerate the narrative SVG:
+
+```bash
+python3 scripts/web/generate_scatter_svg.py
+```
+
+Paste the output into the `svg` field of `STEPS_BUS[4]` in `web/js/config.js`.
+
+**Both representations must use identical parameters:**
+
+- Source: `norrebro_stops.geojson`, internal stops only (`context === false`)
+- X-axis: `score_baseline`
+- Y-axis: `score_aggregate_mid`
+- Normalisation: shared `[lo, hi]` range across both axes
+- Diagonal: identity reference line (baseline = contextual)
+
+Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Coupling.
+
+---
+
 ## Immediate Next Steps
 
-1. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates low/high scenario export.
-2. **Extend bus scoring to low/high Contextual** — `score_baseline` is done; expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
-3. **Implement map scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are currently stubs; implement with `map.flyTo` / layer opacity / data animations.
-4. **Segment hover/click popup** — show mid score + [low, high] range for the active demographic group in interactive mode.
-5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
-6. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
-7. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.
+1. **Sign off Bus narrative** — review complete 6-step narrative in browser before building Rail/Green interactive layers.
+2. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates low/high scenario export.
+3. **Extend bus scoring to low/high Contextual** — `score_baseline` is done; expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
+4. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
+5. **Segment hover/click popup** — show mid score + [low, high] range for the active demographic group in interactive mode.
+6. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
+7. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
+8. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.
 
 ---
 

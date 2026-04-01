@@ -30,6 +30,7 @@ The `cykelsti` layer maps each side of a street separately (two lines where cycl
 ## GTFS: `shapes.txt` for Route Geometries
 
 GTFS provides two ways to represent route paths:
+
 - **`shapes.txt`** (what we use): Actual GPS traces along roads — high-resolution polylines following real route paths.
 - **Stop-to-stop lines** (rejected): Straight lines connecting consecutive stops. Schematic and misleading on a map.
 
@@ -73,6 +74,7 @@ A spatial join without filtering would incorrectly assign road-based points as b
 ## Health Data: Municipality-Level Granularity
 
 Municipality level (all of Kobenhavn = 0101) is the finest publicly available health data. Sub-municipal data (Norrebro-specific) exists in underlying registers but requires:
+
 1. Formal application to Region Hovedstaden or Sundhedsdatastyrelsen
 2. Data Protection Authority approval
 3. Institutional affiliation
@@ -120,7 +122,7 @@ Coverage: 1,653 of 3,439 Nørrebro BBR buildings have direct Enhed matches (48%)
 Average unit size (`residential_area_m2 / n_dwelling_units`) classifies each building into a tier:
 
 | Tier | Avg m²/unit | Household composition |
-|---|---|---|
+| --- | --- | --- |
 | `studio` | ≤50 | Predominantly singles (90%) |
 | `small` | ≤80 | Mix of singles and couples |
 | `medium` | ≤110 | Mix of couples, families |
@@ -135,6 +137,7 @@ Within each neighbourhood × age group, building-level estimates are rescaled so
 ### Low/mid/high scenarios
 
 Three uncertainty scenarios are produced for all 5 age groups (18 population columns total):
+
 - **Mid**: calibrated prior matrices
 - **Low**: 0.6 × mid + 0.4 × uniform (attenuates the typology signal)
 - **High**: 1.4 × mid − 0.4 × uniform (amplifies the typology signal)
@@ -150,6 +153,32 @@ Demographics are assigned to entrance points in two rounds because ~15% of INSPI
 **Round 2** (spatial fallback): the 1,724 unmatched entrances are matched via `sjoin_nearest` against residential building polygons with `max_distance=10m`. This adds ~541 matches, reaching 89.5% total.
 
 **Remaining 10.5% unmatched** are predominantly non-residential: Culture/Institutional (432), Office/Retail (266), and other non-housing uses. Only ~34 genuinely residential entrances (0.3%) remain unmatched — acceptable.
+
+## Narrative–Interactive Scatter Coupling
+
+The scatter chart appears in two places: as a static SVG in the narrative (step 5, "The Analysis") and as an interactive D3 chart in the tool panel (`scatter.js`). Both must show the same data — internal Nørrebro bus stops only (`context=false`), with `score_baseline` on the X-axis and `score_aggregate_mid` on the Y-axis, normalised to the same shared range.
+
+**The narrative SVG is a static snapshot.** It is not auto-generated at build time. If the scoring pipeline re-runs and `norrebro_stops.geojson` changes, the SVG must be regenerated manually:
+
+```bash
+python3 scripts/web/generate_scatter_svg.py
+```
+
+This script writes the updated `<svg>` block to stdout; paste it into the `svg` field of the step 5 entry in `web/js/config.js`.
+
+**What must stay in sync:**
+
+- Filter: `context === false` (internal stops only)
+- X field: `score_baseline`
+- Y field: `score_aggregate_mid`
+- Normalisation: shared `[lo, hi]` across both axes (same as `scatter.js` `_buildScales` logic)
+- Diagonal reference line: represents the identity (baseline = contextual)
+
+**Files involved:**
+
+- `web/js/config.js` — `STEPS_BUS[4].svg` (the static narrative scatter)
+- `web/js/scatter.js` — `initScatter()` / `updateScatterMode()` (the interactive chart)
+- `scripts/web/generate_scatter_svg.py` — regeneration script (to be created when pipeline re-runs)
 
 ### NaN×NaN cartesian explosion (avoided)
 
