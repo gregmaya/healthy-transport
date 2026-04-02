@@ -86,9 +86,9 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 | File | Content | Status |
 |---|---|---|
-| `norrebro_bus_segments_scored.geojson` | 1,699 bus-route segments (GTFS geometry, ≤20m), mid-scenario scores + `score_baseline` + `interior` flag (WGS84, 946 KB) | ✅ exists |
+| `norrebro_bus_segments_scored.geojson` | 1,699 bus-route segments (GTFS geometry, ≤20m), 5 score columns + `interior` flag (WGS84) — **re-run needed** after script change | ⚠️ stale |
 | `norrebro_boundary.geojson` | District boundary (WGS84, 16 KB) | ✅ exists |
-| `norrebro_stops.geojson` | 552 bus stops benchmark layer with all `score_*` columns (WGS84, 332 KB) | ✅ exists |
+| `norrebro_stops.geojson` | 552 bus stops benchmark layer with all `score_*` columns (WGS84) — **re-run needed** | ⚠️ stale |
 | `norrebro_bus_routes_context.geojson` | 68 dissolved GTFS bus route geometries for context display (WGS84, 149 KB) | ✅ exists |
 | `norrebro_demographics.geojson` | 10,175 entrance points for demographics heatmap; includes low/high/unc_pct columns (WGS84, 7.7 MB) | ✅ exists |
 | `norrebro_neighbourhoods.geojson` | 5 sub-neighbourhood polygons (WGS84, 33 KB) — exported but not used in frontend | ✅ exists |
@@ -96,11 +96,17 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | `norrebro_rail_stops_scored.geojson` | One scored point per metro/train entrance (Baseline + Contextual) | Not yet — blocked on data source |
 | `norrebro_greenspace_access.geojson` | 20m segments scored by network distance to parks/playgrounds | Not yet |
 
-**Score column naming convention** (all scored layers):
-- `score_{group}_baseline` — working-age B(d) curve, equal node weight, no demographics
-- `score_{group}_low` / `_mid` / `_high` — Contextual, three demographic scenarios
-- `score_{group}_mid_share` — Contextual mid normalised to local population within d_max
-- `score_aggregate_mid` — equal-weighted mean of three group share scores
+**Score column naming convention** (all scored layers, as of `scripts/score/score_bus_routes.py`):
+- `score_catchment` — B(t) × total_area_m2 per building (deduped by building_id); no population weighting; replaces `score_baseline`
+- `score_health_working_age` — B(t) × pop working-age (15–64), mid scenario; normalised share
+- `score_health_elderly` — B(t) × pop elderly (65+), mid scenario; normalised share
+- `score_health_children` — B(t) × pop children (0–14), mid scenario; normalised share
+- `score_health_combined` — equal-weight mean of three group shares; replaces `score_aggregate_mid`
+
+**Walking speeds used in B(t) curves** (literature-grounded):
+- Working age (18–64): 1.40 m/s — Bohannon (1997) meta-analysis; max 10 min walk
+- Elderly (65+): 0.90 m/s — Lusardi et al. (2003); max 8 min walk
+- Children (0–14): 1.00 m/s — Plaut (2005); max 7 min walk
 
 ---
 
@@ -240,11 +246,11 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Sign off Bus narrative** — review complete 6-step narrative in browser before building Rail/Green interactive layers.
-2. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag. Decision gates low/high scenario export.
-3. **Extend bus scoring to low/high Contextual** — `score_baseline` is done; expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
+1. **Run scoring pipeline** — `python scripts/score/score_bus_routes.py` then `python scripts/export/export_bus_route_segments.py`. Validate new score columns in `data/web/norrebro_bus_segments_scored.geojson`.
+2. **Update frontend column references** — `web/js/config.js`, `web/js/scatter.js`, `web/js/tool.js` still use old names (`score_baseline`, `score_aggregate_mid`, `score_*_mid_share`). Grep and replace with new names.
+3. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag.
 4. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
-5. **Segment hover/click popup** — show mid score + [low, high] range for the active demographic group in interactive mode.
+5. **Segment hover/click popup** — show score on hover in interactive mode.
 6. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
 7. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
 8. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.

@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 9 complete — Bus narrative redesign: tag pills, rewritten 6-step copy, SVG illustrations, real-data scatter snapshot, building footprints layer, map lock during narrative, scroll fix, image fade, tab→narrative return
+**Current Phase**: Phase 10 complete — Time-based B(t) scoring, CitySeer dev branch `decay_fn`, frontend column rename, benefit-curve SVG update
 **Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
@@ -11,12 +11,11 @@
 
 ## Prioritised Next Steps
 
-1. **Resolve edge-artifact problem** — 84.8% of live segments fall within 80m of the district boundary and have truncated catchments. Options: (a) extend analysis boundary by ~200m before scoring and clip back; (b) accept `interior=True` filter (only 1,265 fully-interior segments) for the final published layer; (c) document as a known limitation with a UI flag. Decision needed before final export.
-2. **Extend bus scoring to low/high Contextual** — expand `SCENARIOS = ("low", "mid", "high")` in notebook 11; wire scenario rail in frontend to `score_{group}_{scenario}` columns.
-3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves`, `showScoredNetwork`, `showGapAnalysis` are stubs; implement with `flyTo` / layer opacity animations.
+1. **Resolve edge-artifact problem (Phase A — no new downloads)** — extend building/entrance data to 1,000m buffer: (a) increase DAR clip from 800m → 1,000m in `process_buildings.py:403`; (b) buffer INSPIRE clip in `clip_building_footprints.py:49`; (c) re-download BBR with larger bbox. Re-run integrate pipeline.
+2. **Resolve edge-artifact problem (Phase B — new data)** — obtain population data for adjacent districts from DST (`KKBEF8`/`KKBOL2`). Extend `integrate_population_typology.py` to accept multi-district inputs. Re-run scoring.
+3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
 4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
-5. **Segment hover/click popup** — show mid score + [low, high] range on hover in interactive mode.
-6. **Promote notebook 11 to a script** — `scripts/score/score_segments.py`; save scored GeoPackage to `data/integrated/norrebro_bus_segments_scored.gpkg`.
+5. **Segment hover/click popup** — show scores on hover in interactive mode.
 
 ---
 
@@ -123,23 +122,27 @@ Output folder: `data/integrated/`
 - [x] `network_structure_from_nx` built after live-node flagging (live flags baked into Rust backend)
 
 ### 15. Segment Scoring Loop
-- [x] `compute_stats` run with 56 distance bands (100m–1,200m, 20m steps), 9 population columns (3 groups × 3 scenarios) — produces cumulative unweighted sums `cc_{col}_sum_{d}_nw`
+- [x] `compute_stats` run with 56 distance bands (100m–1,200m, 20m steps), 9 population columns (3 groups × 3 scenarios) — produces cumulative unweighted sums `cc_{col}_sum_{d}_nw` (notebook 11, now superseded by script)
 - [x] B(d) scoring: for each band (d1, d2): `B(d_mid) × max(0, cum_d2 − cum_d1)` summed across all bands
 - [x] Local normalisation: denominator = group population within d_max (per node, not district total) — avoids penalising boundary segments for unreachable population
-- [x] Score columns: `score_{group}_mid`, `score_{group}_mid_share`, `score_aggregate_mid` on all 8,328 live segments
-- [x] Mid-scenario score ranges — aggregate: 0–0.532 (mean 0.226); working_age share max 0.524; elderly share max 0.724; children share max 0.727
-- [ ] **Extend to low/high scenarios** — `SCENARIOS = ("low", "mid", "high")`; blocked on edge-artifact decision
-- [ ] **Save scored GeoPackage** to `data/integrated/norrebro_bus_segments_scored.gpkg`
+- [x] **Promoted to script** — `scripts/score/score_bus_routes.py` replaces notebook 11
+  - Per-group walking speeds (m/s): working_age 1.40, elderly 0.90, children 1.00 (literature-grounded)
+  - B(t) curves in time (minutes) anchored to WHO GAPPA 10-minute walk target
+  - 24 distance thresholds (vs 61 in notebook); single `compute_stats` call with union of group distances
+  - New score columns: `score_catchment`, `score_health_working_age`, `score_health_elderly`, `score_health_children`, `score_health_combined`
+  - CitySeer dev branch installed via rustup; `decay_fn` parameter active — 4 traversals (vs 24) with Gaussian integral in Rust
+- [x] **Script complete** — `scripts/score/score_bus_routes.py` replaces notebook 11; outputs validated in `data/web/`
+- [ ] **Validate in QGIS** — confirm score distribution is spatially coherent along bus corridors
 - [ ] Validate output in QGIS — confirm score distribution is spatially coherent along bus corridors
-- [ ] Overlay existing bus stops as a separate layer to identify gaps and over-served corridors
-- [ ] **Promote to script** — `scripts/score/score_segments.py`
+- [ ] **Save scored GeoPackage** to `data/integrated/norrebro_bus_segments_scored.gpkg`
 
 ### Cross-cutting: Two Scoring Modes
 
-- [x] **Baseline scoring (bus)** — `score_baseline` implemented in notebook 11: working-age B(d) curve, `weight_baseline = 1.0` per entrance (equal weight, no population count); column auto-exported via `score_*` pickup in export script
-- [ ] **Contextual low/high scenarios** — expand `SCENARIOS = ("low", "mid", "high")` in notebook 11 (bus); apply same to all other tracks
-- [ ] **Column naming enforced across all layers**: `score_{group}_baseline`, `score_{group}_low`, `score_{group}_mid`, `score_{group}_high`, `score_{group}_mid_share`
-- [ ] **Segment popup**: on hover/click show mid score + `[low, high]` range for active group
+- [x] **Catchment score** — `score_catchment`: B(t) × total_area_m2 per building (deduped by building_id); normalised share; replaces `score_baseline`
+- [x] **Health scores** — `score_health_{working_age|elderly|children}` + `score_health_combined`; mid scenario only
+- [ ] **Extend to low/high scenarios** — add low/high population scenario variants
+- [x] **Update frontend** — replaced `score_baseline` → `score_catchment`, `score_aggregate_mid` → `score_health_combined`, `score_*_mid_share` → `score_health_*` in `config.js`, `map.js`, `scatter.js`
+- [ ] **Segment popup**: on hover/click show score + description for active score type
 
 ---
 

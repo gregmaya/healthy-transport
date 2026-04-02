@@ -195,9 +195,11 @@ def main():
     for col in score_cols:
         bus_segs[col] = score_arrays[col]
 
-    log.info("Score remapping complete. score_aggregate_mid range: %.3f – %.3f",
-             float(np.nanmin(score_arrays["score_aggregate_mid"])),
-             float(np.nanmax(score_arrays["score_aggregate_mid"])))
+    primary_score = next((c for c in score_cols if c == "score_health_combined"), score_cols[0])
+    log.info("Score remapping complete. %s range: %.3f – %.3f",
+             primary_score,
+             float(np.nanmin(score_arrays[primary_score])),
+             float(np.nanmax(score_arrays[primary_score])))
 
     # --- Attach route names (all routes through each segment, via 15m buffer) ---
     log.info("Attaching route names ...")
@@ -258,11 +260,12 @@ def main():
     for col in score_cols:
         stops[col] = stop_score_arrays[col]
 
-    scored_stops = (~np.isnan(stop_score_arrays["score_aggregate_mid"])).sum()
-    log.info("Stops with scores: %d / %d  (aggregate range: %.3f – %.3f)",
-             scored_stops, len(stops),
-             float(np.nanmin(stop_score_arrays["score_aggregate_mid"])),
-             float(np.nanmax(stop_score_arrays["score_aggregate_mid"])))
+    primary_score = next((c for c in score_cols if c == "score_health_combined"), score_cols[0])
+    scored_stops = (~np.isnan(stop_score_arrays[primary_score])).sum()
+    log.info("Stops with scores: %d / %d  (%s range: %.3f – %.3f)",
+             scored_stops, len(stops), primary_score,
+             float(np.nanmin(stop_score_arrays[primary_score])),
+             float(np.nanmax(stop_score_arrays[primary_score])))
 
     stops.to_crs(CRS_WGS84).to_file(WEB_STOPS_GEOJSON, driver="GeoJSON")
     log.info("Exported enriched stops → %s  (%d features, %.0f KB)",

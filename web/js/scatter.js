@@ -1,6 +1,6 @@
 /**
  * Baseline vs Contextual scatter plot for the bus analysis panel.
- * X axis: always score_baseline (network coverage, no demographics)
+ * X axis: always score_catchment (network coverage, no demographics)
  * Y axis: contextual score for the currently selected demographic group
  * Colour: selected group's contextual score (matches Y axis)
  */
@@ -16,10 +16,10 @@ export const BANDS = [
 ];
 
 const GROUP_Y_FIELD = {
-  aggregate:   "score_aggregate_mid",
-  working_age: "score_working_age_mid_share",
-  elderly:     "score_elderly_mid_share",
-  children:    "score_children_mid_share",
+  aggregate:   "score_health_combined",
+  working_age: "score_health_working_age",
+  elderly:     "score_health_elderly",
+  children:    "score_health_children",
 };
 
 const GROUP_LABEL = {
@@ -131,7 +131,7 @@ function drawDistribution(group) {
 
   // Pick score column based on active mode
   const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
-  const scoreKey   = isBaseline ? "score_baseline" : (GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate);
+  const scoreKey   = isBaseline ? "score_catchment" : (GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate);
 
   // Normalise values so band thresholds (0–1) match the colour scale
   const rawVals = _features.map(f => +(f.properties[scoreKey]) || 0);
@@ -163,9 +163,9 @@ function drawScatter(group) {
   const yKey   = GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate;
   const yLabel = GROUP_LABEL[group]   || "All groups";
   const props  = _features.map(f => f.properties);
-  const xVals   = props.map(p => +(p["score_baseline"]) || 0);
+  const xVals   = props.map(p => +(p["score_catchment"]) || 0);
   const yVals   = props.map(p => +(p[yKey]) || 0);
-  const aggVals = props.map(p => +(p["score_aggregate_mid"]) || 0); // z-order only
+  const aggVals = props.map(p => +(p["score_health_combined"]) || 0); // z-order only
 
   const xDataMin = Math.min(...xVals), xDataMax = Math.max(...xVals);
   const yDataMin = Math.min(...yVals), yDataMax = Math.max(...yVals);

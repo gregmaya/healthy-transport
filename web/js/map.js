@@ -15,11 +15,11 @@ let _activeGroup = "aggregate";
 let _activeMode  = "contextual";
 
 const STOP_SCORE_FIELD = {
-  baseline:    "score_baseline",
-  aggregate:   "score_aggregate_mid",
-  working_age: "score_working_age_mid_share",
-  elderly:     "score_elderly_mid_share",
-  children:    "score_children_mid_share",
+  baseline:    "score_catchment",
+  aggregate:   "score_health_combined",
+  working_age: "score_health_working_age",
+  elderly:     "score_health_elderly",
+  children:    "score_health_children",
 };
 
 const DEMO_GROUP_FIELD = {
@@ -264,7 +264,7 @@ function _addPopups() {
 
     // Use active group + mode to determine the category label
     const scoreField = _activeMode === "baseline"
-      ? "score_baseline"
+      ? "score_catchment"
       : (STOP_SCORE_FIELD[_activeGroup] || STOP_SCORE_FIELD.aggregate);
     const rawScore = +(p[scoreField]) || 0;
     const normScore = (_rampLo !== null && _rampHi !== _rampLo)
@@ -280,13 +280,13 @@ function _addPopups() {
         ${p.route_names ? `<div style="font-size:0.78em;color:#666;margin:2px 0">Routes: ${p.route_names}</div>` : ""}
         <div class="popup-category" style="color:${band.color}">${band.label}</div>
         <div class="popup-mode">(${modeName} mode)</div>
-        ${p.score_aggregate_mid != null ? `
+        ${p.score_health_combined != null ? `
         <hr class="popup-hr">
-        <div class="popup-score-row"><span>Aggregate</span><span>${dec(p.score_aggregate_mid)}</span></div>
+        <div class="popup-score-row"><span>Combined</span><span>${dec(p.score_health_combined)}</span></div>
         <hr class="popup-hr">
-        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_working_age_mid_share)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_elderly_mid_share)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_children_mid_share)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_health_working_age)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_health_elderly)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_health_children)}</span></div>
         ` : ""}
       `)
       .addTo(map);
@@ -367,14 +367,14 @@ export function setScoreMode(mode) {
     setActiveGroup("aggregate");
     if (_rampLo !== null) {
       if (map.getLayer("segments-aggregate"))
-        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_baseline"));
+        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_catchment"));
       _applyStopRamp("baseline");
     }
   } else {
     if (titleEl) titleEl.textContent = "Health benefit score";
     if (_rampLo !== null) {
       if (map.getLayer("segments-aggregate"))
-        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_aggregate_mid"));
+        map.setPaintProperty("segments-aggregate", "line-color", _buildRamp("score_health_combined"));
       _applyStopRamp("aggregate");
     }
   }
@@ -505,16 +505,16 @@ function _buildRamp(field) {
 }
 
 function _applyDynamicRamp(features) {
-  const vals = features.map(f => +f.properties.score_aggregate_mid).filter(v => !isNaN(v));
+  const vals = features.map(f => +f.properties.score_health_combined).filter(v => !isNaN(v));
   if (!vals.length) return;
   vals.sort((a, b) => a - b);
   _rampLo = vals[0];
   _rampHi = vals[vals.length - 1];
 
-  if (map.getLayer("segments-aggregate"))   map.setPaintProperty("segments-aggregate",   "line-color", _buildRamp("score_aggregate_mid"));
-  if (map.getLayer("segments-working_age")) map.setPaintProperty("segments-working_age", "line-color", _buildRamp("score_working_age_mid_share"));
-  if (map.getLayer("segments-elderly"))     map.setPaintProperty("segments-elderly",     "line-color", _buildRamp("score_elderly_mid_share"));
-  if (map.getLayer("segments-children"))    map.setPaintProperty("segments-children",    "line-color", _buildRamp("score_children_mid_share"));
+  if (map.getLayer("segments-aggregate"))   map.setPaintProperty("segments-aggregate",   "line-color", _buildRamp("score_health_combined"));
+  if (map.getLayer("segments-working_age")) map.setPaintProperty("segments-working_age", "line-color", _buildRamp("score_health_working_age"));
+  if (map.getLayer("segments-elderly"))     map.setPaintProperty("segments-elderly",     "line-color", _buildRamp("score_health_elderly"));
+  if (map.getLayer("segments-children"))    map.setPaintProperty("segments-children",    "line-color", _buildRamp("score_health_children"));
 
   _applyStopRamp("aggregate");
   _updateLegend();

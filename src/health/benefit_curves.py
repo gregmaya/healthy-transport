@@ -26,28 +26,33 @@ import numpy as np
 DEMOGRAPHIC_PARAMS: dict[str, dict] = {
     "working_age": {
         "label": "Working-age adults (15–64)",
-        "mu": 500,       # peak benefit distance (m)
-        "sigma": 200,    # curve width — controls how fast benefit falls off
-        "d_max": 1200,   # zero benefit beyond this distance (m)
-        # Two source columns are combined (summed) before scoring
+        # Time-grounded parameters (Bohannon 1997): speed=1.40 m/s, peak=5 min, max=10 min
+        # Metre equivalents used by B(d): peak=420m, d_max=840m, sigma=202m
+        "mu": 420,       # peak benefit distance (m) — 5 min × 60 s × 1.40 m/s
+        "sigma": 202,    # curve width (m) — 2.4 min × 60 s × 1.40 m/s
+        "d_max": 840,    # zero benefit beyond this distance (m) — 10 min × 60 s × 1.40 m/s
         "pop_cols": ["pop_young_adults_15_29_mid", "pop_working_age_30_64_mid"],
-        "pop_col_combined": "pop_working_age_combined",  # name of pre-aggregated column
+        "pop_col_combined": "pop_working_age_combined",
         "color": "#2166ac",
     },
     "elderly": {
         "label": "Elderly (65+)",
-        "mu": 300,
-        "sigma": 150,
-        "d_max": 700,
+        # Time-grounded parameters (Lusardi 2003): speed=0.90 m/s, peak=4 min, max=8 min
+        # Metre equivalents: peak=216m, d_max=432m, sigma=108m
+        "mu": 216,       # 4 min × 60 s × 0.90 m/s
+        "sigma": 108,    # 2.0 min × 60 s × 0.90 m/s
+        "d_max": 432,    # 8 min × 60 s × 0.90 m/s
         "pop_cols": ["pop_older_adults_65_79_mid", "pop_very_elderly_80plus_mid"],
         "pop_col_combined": "pop_elderly_combined",
         "color": "#d6604d",
     },
     "children": {
         "label": "Children (under 15)",
-        "mu": 250,
-        "sigma": 120,
-        "d_max": 600,
+        # Time-grounded parameters (Plaut 2005): speed=1.00 m/s, peak=3.5 min, max=7 min
+        # Metre equivalents: peak=210m, d_max=420m, sigma=105m
+        "mu": 210,       # 3.5 min × 60 s × 1.00 m/s
+        "sigma": 105,    # 1.75 min × 60 s × 1.00 m/s
+        "d_max": 420,    # 7 min × 60 s × 1.00 m/s
         "pop_cols": ["pop_children_0_14_mid"],
         "pop_col_combined": "pop_children_combined",
         "color": "#4dac26",

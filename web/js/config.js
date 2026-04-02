@@ -34,7 +34,7 @@ export const PALETTE = {
 // Score ramp: platinum → silver → cornflower → steel → pumpkin
 // Upper range (0.75–1.0) transitions to orange so high-scoring zones pop.
 export const SCORE_RAMP = [
-  "interpolate", ["linear"], ["get", "score_aggregate_mid"],
+  "interpolate", ["linear"], ["get", "score_health_combined"],
   0.0,  "#ebebeb",   // platinum   — low
   0.3,  "#c0c0c0",   // silver
   0.55, "#3a6ea5",   // cornflower-ocean
@@ -52,9 +52,9 @@ const _groupRamp = (field) => [
   1.0,  "#ff6700",
 ];
 export const GROUP_RAMPS = {
-  working_age: _groupRamp("score_working_age_mid_share"),
-  elderly:     _groupRamp("score_elderly_mid_share"),
-  children:    _groupRamp("score_children_mid_share"),
+  working_age: _groupRamp("score_health_working_age"),
+  elderly:     _groupRamp("score_health_elderly"),
+  children:    _groupRamp("score_health_children"),
   aggregate:   SCORE_RAMP,
 };
 
@@ -136,7 +136,7 @@ export const STEPS_BUS = [
     id: "curves",
     tag: "The Model",
     title: "Different people, different distances",
-    body: "A retired resident and a working-age commuter don't share the same walking comfort zone. <strong>We model three demographic groups — elderly, working-age, children — each with its own benefit curve:</strong> peaking at a different distance, falling to zero at a different threshold. The score for any location sums those weighted benefits for the people who actually live nearby.",
+    body: "A retired resident and a working-age commuter don't share the same walking comfort zone. <strong>We model three demographic groups — elderly, working-age, children — each with its own benefit curve:</strong> peaking at a different walk time, falling to zero at a different threshold. The score for any location sums those weighted benefits for the people who actually live nearby.",
     mapFn: "showBenefitCurves",
     svgFullscreen: true,
     svg: `<svg class="step-svg" viewBox="0 0 300 196" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -147,24 +147,24 @@ export const STEPS_BUS = [
   <!-- Zone annotations above the chart (grey to match zone shading) -->
   <text x="49" y="27" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">too close to</text>
   <text x="49" y="36" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">generate benefit</text>
-  <text x="214" y="27" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">too far to</text>
-  <text x="214" y="36" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">induce demand</text>
+  <text x="245" y="27" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">too far to</text>
+  <text x="245" y="36" font-size="6.5" fill="#888" font-family="sans-serif" text-anchor="middle">induce demand</text>
 
   <g transform="translate(38,44)">
 
-    <!-- Gradient for right zone: transparent at 13 min entry, solid by ~13 min mark -->
-    <!-- Right rect spans x=92–262 (170 units). 13 min = x=169 → 45% of rect width -->
+    <!-- Gradient for right zone: fades in to solid by the working-age cutoff (10 min = x=217) -->
+    <!-- Right rect spans x=152–262 (110 units). Working-age cutoff at x=217 → 59% of rect width -->
     <defs>
       <linearGradient id="zone-right-fade" x1="0" x2="1" y1="0" y2="0">
         <stop offset="0%"   stop-color="#e0e0e0" stop-opacity="0"/>
-        <stop offset="45%"  stop-color="#e0e0e0" stop-opacity="0.55"/>
+        <stop offset="59%"  stop-color="#e0e0e0" stop-opacity="0.55"/>
         <stop offset="100%" stop-color="#e0e0e0" stop-opacity="0.55"/>
       </linearGradient>
     </defs>
 
     <!-- Zone shading: clipped to chart area (y=0 to y=108), grey -->
     <rect x="0"   y="0" width="22"  height="108" fill="#e0e0e0" opacity="0.55"/>
-    <rect x="92"  y="0" width="170" height="108" fill="url(#zone-right-fade)"/>
+    <rect x="152" y="0" width="110" height="108" fill="url(#zone-right-fade)"/>
 
     <!-- Axes (black) -->
     <line x1="0" y1="108" x2="262" y2="108" stroke="#222" stroke-width="1"/>
@@ -176,33 +176,34 @@ export const STEPS_BUS = [
     <text x="-2" y="106" font-size="5.5" fill="#777" font-family="sans-serif" text-anchor="end">Low</text>
     <text x="-2" y="113" font-size="5.5" fill="#777" font-family="sans-serif" text-anchor="end">benefit</text>
 
-    <!-- x-axis time labels (260 units = 20 min = 1 680 m at 1.4 m/s) -->
+    <!-- x-axis time labels (260 units = 12 min). Scale: 21.67 units/min -->
+    <!-- Parameters: children peak=3.5min, cutoff=7min; elderly peak=4min, cutoff=8min; working-age peak=5min, cutoff=10min -->
     <text x="0"   y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">0</text>
-    <text x="65"  y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">5 min</text>
-    <text x="130" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">10 min</text>
-    <text x="195" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">15 min</text>
-    <text x="262" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">20 min</text>
+    <text x="65"  y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">3 min</text>
+    <text x="130" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">6 min</text>
+    <text x="195" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">9 min</text>
+    <text x="262" y="121" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">12 min</text>
 
     <!-- Curves: symmetric two-segment beziers for smooth peaks and tails -->
-    <!-- Children (back/lightest): peak x=39, d_max x=91 -->
-    <path d="M0,107 C8,107 20,5 39,5 C58,5 85,107 91,107 L262,107"
+    <!-- Children (back/lightest): speed=1.0m/s, peak=3.5min→x=76, cutoff=7min→x=152 -->
+    <path d="M0,107 C30,107 61,5 76,5 C91,5 122,107 152,107 L262,107"
           fill="none" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
 
-    <!-- Elderly (middle): peak x=46, d_max x=108 -->
-    <path d="M0,107 C10,107 26,5 46,5 C66,5 100,107 108,107 L262,107"
+    <!-- Elderly (middle): speed=0.9m/s, peak=4min→x=87, cutoff=8min→x=173 -->
+    <path d="M0,107 C35,107 70,5 87,5 C104,5 138,107 173,107 L262,107"
           fill="none" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
 
-    <!-- Working-age (front): peak x=78, d_max x=182 -->
-    <path d="M0,107 C20,107 58,5 78,5 C98,5 160,107 182,107 L262,107"
+    <!-- Working-age (front): speed=1.4m/s, peak=5min→x=108, cutoff=10min→x=217 -->
+    <path d="M0,107 C43,107 86,5 108,5 C130,5 174,107 217,107 L262,107"
           fill="none" stroke="#2171b5" stroke-width="2"/>
 
     <!-- Legend -->
     <line x1="5"   y1="143" x2="22"  y2="143" stroke="#c6dbef" stroke-width="2" stroke-dasharray="3,3"/>
-    <text x="25"  y="147" font-size="7.5" fill="#555" font-family="sans-serif">Children</text>
-    <line x1="83"  y1="143" x2="100" y2="143" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
-    <text x="103" y="147" font-size="7.5" fill="#555" font-family="sans-serif">Elderly</text>
-    <line x1="155" y1="143" x2="172" y2="143" stroke="#2171b5" stroke-width="2"/>
-    <text x="175" y="147" font-size="7.5" fill="#555" font-family="sans-serif">Working-age</text>
+    <text x="25"  y="147" font-size="7.5" fill="#555" font-family="sans-serif">Children (0–14, 7 min)</text>
+    <line x1="5"   y1="155" x2="22"  y2="155" stroke="#6baed6" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="25"  y="159" font-size="7.5" fill="#555" font-family="sans-serif">Elderly (65+, 8 min)</text>
+    <line x1="5"   y1="167" x2="22"  y2="167" stroke="#2171b5" stroke-width="2"/>
+    <text x="25"  y="171" font-size="7.5" fill="#555" font-family="sans-serif">Working-age (15–64, 10 min)</text>
 
   </g>
 </svg>`,
@@ -220,11 +221,11 @@ export const STEPS_BUS = [
     title: "What the scores reveal — and what they don't",
     body: "High-scoring segments with no current stop are the most actionable opportunities. But a low score doesn't mean a misplaced stop: a bus stop near a university or a hospital serves a high-demand location with few nearby residents. High network reach, low residential density. <strong>That's exactly why comparing the Baseline score (catchment areas) against the Health score (with actual population distribution) is the core analytical move.</strong>",
     mapFn: "showGapAnalysis",
-    // COUPLING NOTE: this SVG is a static snapshot of the Baseline vs Contextual scatter
+    // COUPLING NOTE: this SVG is a static snapshot of the Catchment vs Health scatter
     // rendered in the interactive tool (scatter.js). Data source: norrebro_stops.geojson,
-    // internal stops only (context=false). X = score_baseline, Y = score_aggregate_mid,
-    // both normalised to the shared range [lo=0.1371, hi=0.5205].
-    // If the scoring pipeline re-runs, regenerate with: python3 scripts/web/generate_scatter_svg.py
+    // internal stops only (context=false). X = score_catchment, Y = score_health_combined,
+    // both normalised to the shared range [0.048, 0.990].
+    // Regenerate with: python3 scripts/web/generate_scatter_svg.py
     // See also: docs/design_decisions.md § Narrative–Interactive Scatter Coupling
     svg: `<svg class="step-svg" viewBox="-28 -42 258 268" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <!-- Title: two lines, centered over chart area -->
@@ -233,93 +234,93 @@ export const STEPS_BUS = [
     <tspan x="86" dy="11">to health benefit?</tspan>
   </text>
   <!-- Diagonal reference line -->
-  <line x1="0" y1="160" x2="200" y2="0" stroke="#c6dbef" stroke-width="1" stroke-dasharray="4,3"/>
-  <!-- 85 internal stops: color = scoreColor(normalize(score_aggregate_mid)), matches scatter.js STOPS ramp -->
-  <circle cx="148.5" cy="4.6" r="2.2" fill="#07529a" fill-opacity="0.8"/>
-  <circle cx="148.3" cy="3.5" r="2.2" fill="#055199" fill-opacity="0.8"/>
-  <circle cx="138.8" cy="35.3" r="2.2" fill="#336aa3" fill-opacity="0.8"/>
-  <circle cx="143.8" cy="20.1" r="2.2" fill="#1d5e9f" fill-opacity="0.8"/>
-  <circle cx="76.3" cy="27.0" r="2.2" fill="#2764a1" fill-opacity="0.8"/>
-  <circle cx="91.1" cy="44.6" r="2.2" fill="#4977a8" fill-opacity="0.8"/>
-  <circle cx="96.3" cy="33.4" r="2.2" fill="#3069a3" fill-opacity="0.8"/>
-  <circle cx="104.0" cy="26.4" r="2.2" fill="#2663a1" fill-opacity="0.8"/>
-  <circle cx="101.4" cy="14.4" r="2.2" fill="#155a9d" fill-opacity="0.8"/>
-  <circle cx="105.0" cy="21.8" r="2.2" fill="#205f9f" fill-opacity="0.8"/>
-  <circle cx="104.2" cy="26.9" r="2.2" fill="#2764a1" fill-opacity="0.8"/>
-  <circle cx="120.0" cy="39.8" r="2.2" fill="#3a6ea5" fill-opacity="0.8"/>
-  <circle cx="114.9" cy="37.4" r="2.2" fill="#366ca4" fill-opacity="0.8"/>
-  <circle cx="143.9" cy="32.4" r="2.2" fill="#2f68a3" fill-opacity="0.8"/>
-  <circle cx="145.4" cy="31.7" r="2.2" fill="#2e67a2" fill-opacity="0.8"/>
-  <circle cx="92.0" cy="40.3" r="2.2" fill="#3b6fa5" fill-opacity="0.8"/>
-  <circle cx="163.1" cy="21.3" r="2.2" fill="#1f5f9f" fill-opacity="0.8"/>
-  <circle cx="163.1" cy="21.3" r="2.2" fill="#1f5f9f" fill-opacity="0.8"/>
-  <circle cx="147.2" cy="43.6" r="2.2" fill="#4675a7" fill-opacity="0.8"/>
-  <circle cx="143.5" cy="51.5" r="2.2" fill="#6086ad" fill-opacity="0.8"/>
-  <circle cx="118.4" cy="52.3" r="2.2" fill="#6387ad" fill-opacity="0.8"/>
-  <circle cx="137.4" cy="62.6" r="2.2" fill="#869cb4" fill-opacity="0.8"/>
-  <circle cx="137.4" cy="62.6" r="2.2" fill="#869cb4" fill-opacity="0.8"/>
-  <circle cx="108.4" cy="24.7" r="2.2" fill="#2462a0" fill-opacity="0.8"/>
-  <circle cx="108.8" cy="15.9" r="2.2" fill="#175b9d" fill-opacity="0.8"/>
-  <circle cx="200.0" cy="17.2" r="2.2" fill="#195c9e" fill-opacity="0.8"/>
-  <circle cx="189.2" cy="11.1" r="2.2" fill="#10579c" fill-opacity="0.8"/>
-  <circle cx="174.6" cy="15.0" r="2.2" fill="#165a9d" fill-opacity="0.8"/>
-  <circle cx="181.2" cy="10.2" r="2.2" fill="#0f569b" fill-opacity="0.8"/>
-  <circle cx="180.4" cy="9.5" r="2.2" fill="#0e569b" fill-opacity="0.8"/>
-  <circle cx="113.2" cy="62.7" r="2.2" fill="#869cb4" fill-opacity="0.8"/>
-  <circle cx="143.6" cy="56.8" r="2.2" fill="#7290b0" fill-opacity="0.8"/>
-  <circle cx="100.6" cy="70.7" r="2.2" fill="#a1adba" fill-opacity="0.8"/>
-  <circle cx="119.8" cy="56.8" r="2.2" fill="#7290b0" fill-opacity="0.8"/>
-  <circle cx="122.8" cy="45.7" r="2.2" fill="#4d7aa9" fill-opacity="0.8"/>
-  <circle cx="122.9" cy="34.9" r="2.2" fill="#336aa3" fill-opacity="0.8"/>
-  <circle cx="121.5" cy="33.5" r="2.2" fill="#3169a3" fill-opacity="0.8"/>
-  <circle cx="119.9" cy="27.1" r="2.2" fill="#2764a1" fill-opacity="0.8"/>
-  <circle cx="124.7" cy="33.4" r="2.2" fill="#3069a3" fill-opacity="0.8"/>
-  <circle cx="85.7" cy="39.1" r="2.2" fill="#396da5" fill-opacity="0.8"/>
-  <circle cx="85.0" cy="36.1" r="2.2" fill="#346ba4" fill-opacity="0.8"/>
-  <circle cx="116.2" cy="25.6" r="2.2" fill="#2563a0" fill-opacity="0.8"/>
-  <circle cx="131.9" cy="34.4" r="2.2" fill="#3269a3" fill-opacity="0.8"/>
-  <circle cx="73.3" cy="89.9" r="2.2" fill="#cbcbcb" fill-opacity="0.8"/>
-  <circle cx="77.2" cy="59.5" r="2.2" fill="#7b96b2" fill-opacity="0.8"/>
-  <circle cx="61.8" cy="86.8" r="2.2" fill="#c7c7c7" fill-opacity="0.8"/>
-  <circle cx="27.8" cy="160.0" r="2.2" fill="#ff6700" fill-opacity="0.8"/>
-  <circle cx="29.7" cy="158.6" r="2.2" fill="#fe6c08" fill-opacity="0.8"/>
-  <circle cx="125.6" cy="77.6" r="2.2" fill="#b8bbbe" fill-opacity="0.8"/>
-  <circle cx="101.1" cy="106.0" r="2.2" fill="#dcdcdc" fill-opacity="0.8"/>
-  <circle cx="122.9" cy="26.2" r="2.2" fill="#2663a1" fill-opacity="0.8"/>
-  <circle cx="131.4" cy="35.2" r="2.2" fill="#336aa3" fill-opacity="0.8"/>
-  <circle cx="148.0" cy="17.5" r="2.2" fill="#195c9e" fill-opacity="0.8"/>
-  <circle cx="160.5" cy="10.3" r="2.2" fill="#0f569b" fill-opacity="0.8"/>
-  <circle cx="177.4" cy="21.2" r="2.2" fill="#1f5f9f" fill-opacity="0.8"/>
-  <circle cx="137.1" cy="72.1" r="2.2" fill="#a6b0bb" fill-opacity="0.8"/>
-  <circle cx="174.8" cy="24.9" r="2.2" fill="#2462a0" fill-opacity="0.8"/>
-  <circle cx="131.0" cy="73.2" r="2.2" fill="#a9b2bb" fill-opacity="0.8"/>
-  <circle cx="127.1" cy="50.4" r="2.2" fill="#5d83ac" fill-opacity="0.8"/>
-  <circle cx="148.3" cy="26.4" r="2.2" fill="#2663a1" fill-opacity="0.8"/>
-  <circle cx="108.7" cy="29.8" r="2.2" fill="#2b66a2" fill-opacity="0.8"/>
-  <circle cx="108.7" cy="29.8" r="2.2" fill="#2b66a2" fill-opacity="0.8"/>
-  <circle cx="118.8" cy="26.8" r="2.2" fill="#2763a1" fill-opacity="0.8"/>
-  <circle cx="144.9" cy="38.4" r="2.2" fill="#386da4" fill-opacity="0.8"/>
-  <circle cx="144.7" cy="41.4" r="2.2" fill="#3f71a6" fill-opacity="0.8"/>
-  <circle cx="183.3" cy="41.3" r="2.2" fill="#3e71a6" fill-opacity="0.8"/>
-  <circle cx="193.3" cy="42.3" r="2.2" fill="#4273a7" fill-opacity="0.8"/>
-  <circle cx="121.8" cy="34.9" r="2.2" fill="#336aa3" fill-opacity="0.8"/>
-  <circle cx="121.8" cy="34.9" r="2.2" fill="#336aa3" fill-opacity="0.8"/>
-  <circle cx="165.5" cy="19.0" r="2.2" fill="#1c5d9e" fill-opacity="0.8"/>
-  <circle cx="164.7" cy="19.4" r="2.2" fill="#1c5e9e" fill-opacity="0.8"/>
-  <circle cx="81.6" cy="45.3" r="2.2" fill="#4c79a9" fill-opacity="0.8"/>
-  <circle cx="92.3" cy="46.4" r="2.2" fill="#507ba9" fill-opacity="0.8"/>
-  <circle cx="83.6" cy="47.2" r="2.2" fill="#527daa" fill-opacity="0.8"/>
-  <circle cx="143.6" cy="24.6" r="2.2" fill="#2462a0" fill-opacity="0.8"/>
-  <circle cx="132.4" cy="29.8" r="2.2" fill="#2b66a2" fill-opacity="0.8"/>
-  <circle cx="148.0" cy="18.8" r="2.2" fill="#1b5d9e" fill-opacity="0.8"/>
-  <circle cx="65.5" cy="76.8" r="2.2" fill="#b5b9be" fill-opacity="0.8"/>
-  <circle cx="55.7" cy="85.2" r="2.2" fill="#c6c6c6" fill-opacity="0.8"/>
-  <circle cx="120.3" cy="106.9" r="2.2" fill="#dddddd" fill-opacity="0.8"/>
-  <circle cx="104.7" cy="100.0" r="2.2" fill="#d5d5d5" fill-opacity="0.8"/>
-  <circle cx="140.9" cy="28.8" r="2.2" fill="#2a65a1" fill-opacity="0.8"/>
-  <circle cx="130.7" cy="52.9" r="2.2" fill="#6588ae" fill-opacity="0.8"/>
-  <circle cx="138.3" cy="50.1" r="2.2" fill="#5c83ac" fill-opacity="0.8"/>
-  <circle cx="144.8" cy="57.3" r="2.2" fill="#7491b1" fill-opacity="0.8"/>
+  <line x1="0.0" y1="160.0" x2="200.0" y2="0.0" stroke="#c6dbef" stroke-width="1" stroke-dasharray="4,3"/>
+  <!-- 85 internal stops: color = scoreColor(normalize(score_health_combined)), matches scatter.js STOPS ramp -->
+  <circle cx="65.8" cy="160.0" r="2.2" fill="#ff6700" fill-opacity="0.8"/>
+  <circle cx="69.2" cy="159.7" r="2.2" fill="#ff6802" fill-opacity="0.8"/>
+  <circle cx="22.9" cy="158.9" r="2.2" fill="#fe6b06" fill-opacity="0.8"/>
+  <circle cx="20.8" cy="158.8" r="2.2" fill="#fe6b07" fill-opacity="0.8"/>
+  <circle cx="32.2" cy="158.2" r="2.2" fill="#fe6d0a" fill-opacity="0.8"/>
+  <circle cx="47.1" cy="144.2" r="2.2" fill="#f79b5d" fill-opacity="0.8"/>
+  <circle cx="52.7" cy="141.8" r="2.2" fill="#f6a36b" fill-opacity="0.8"/>
+  <circle cx="103.1" cy="141.0" r="2.2" fill="#f6a66f" fill-opacity="0.8"/>
+  <circle cx="108.0" cy="140.1" r="2.2" fill="#f5a975" fill-opacity="0.8"/>
+  <circle cx="78.5" cy="139.4" r="2.2" fill="#f5ab79" fill-opacity="0.8"/>
+  <circle cx="71.1" cy="139.3" r="2.2" fill="#f5ab7a" fill-opacity="0.8"/>
+  <circle cx="60.4" cy="138.9" r="2.2" fill="#f4ad7c" fill-opacity="0.8"/>
+  <circle cx="61.1" cy="137.8" r="2.2" fill="#f4b082" fill-opacity="0.8"/>
+  <circle cx="87.6" cy="137.8" r="2.2" fill="#f4b083" fill-opacity="0.8"/>
+  <circle cx="77.3" cy="137.5" r="2.2" fill="#f4b184" fill-opacity="0.8"/>
+  <circle cx="79.4" cy="136.8" r="2.2" fill="#f3b488" fill-opacity="0.8"/>
+  <circle cx="96.8" cy="135.5" r="2.2" fill="#f3b890" fill-opacity="0.8"/>
+  <circle cx="69.1" cy="135.1" r="2.2" fill="#f3b992" fill-opacity="0.8"/>
+  <circle cx="86.3" cy="123.7" r="2.2" fill="#eddfd5" fill-opacity="0.8"/>
+  <circle cx="127.7" cy="116.8" r="2.2" fill="#e8e8e8" fill-opacity="0.8"/>
+  <circle cx="83.9" cy="116.2" r="2.2" fill="#e7e7e7" fill-opacity="0.8"/>
+  <circle cx="94.2" cy="112.5" r="2.2" fill="#e3e3e3" fill-opacity="0.8"/>
+  <circle cx="65.4" cy="109.8" r="2.2" fill="#e0e0e0" fill-opacity="0.8"/>
+  <circle cx="78.1" cy="109.7" r="2.2" fill="#e0e0e0" fill-opacity="0.8"/>
+  <circle cx="78.6" cy="105.7" r="2.2" fill="#dcdcdc" fill-opacity="0.8"/>
+  <circle cx="104.2" cy="101.1" r="2.2" fill="#d7d7d7" fill-opacity="0.8"/>
+  <circle cx="95.1" cy="98.2" r="2.2" fill="#d4d4d4" fill-opacity="0.8"/>
+  <circle cx="136.5" cy="97.9" r="2.2" fill="#d3d3d3" fill-opacity="0.8"/>
+  <circle cx="137.9" cy="97.3" r="2.2" fill="#d3d3d3" fill-opacity="0.8"/>
+  <circle cx="106.3" cy="90.2" r="2.2" fill="#cbcbcb" fill-opacity="0.8"/>
+  <circle cx="109.5" cy="90.0" r="2.2" fill="#cbcbcb" fill-opacity="0.8"/>
+  <circle cx="75.6" cy="89.7" r="2.2" fill="#cacaca" fill-opacity="0.8"/>
+  <circle cx="75.6" cy="89.7" r="2.2" fill="#cacaca" fill-opacity="0.8"/>
+  <circle cx="70.5" cy="88.5" r="2.2" fill="#c9c9c9" fill-opacity="0.8"/>
+  <circle cx="114.9" cy="87.6" r="2.2" fill="#c8c8c8" fill-opacity="0.8"/>
+  <circle cx="118.2" cy="87.2" r="2.2" fill="#c8c8c8" fill-opacity="0.8"/>
+  <circle cx="118.2" cy="87.2" r="2.2" fill="#c8c8c8" fill-opacity="0.8"/>
+  <circle cx="80.2" cy="86.7" r="2.2" fill="#c7c7c7" fill-opacity="0.8"/>
+  <circle cx="105.7" cy="86.2" r="2.2" fill="#c7c7c7" fill-opacity="0.8"/>
+  <circle cx="50.3" cy="85.5" r="2.2" fill="#c6c6c6" fill-opacity="0.8"/>
+  <circle cx="148.3" cy="84.3" r="2.2" fill="#c5c5c5" fill-opacity="0.8"/>
+  <circle cx="81.3" cy="84.2" r="2.2" fill="#c5c5c5" fill-opacity="0.8"/>
+  <circle cx="49.9" cy="80.9" r="2.2" fill="#c1c1c1" fill-opacity="0.8"/>
+  <circle cx="156.4" cy="80.2" r="2.2" fill="#c0c0c0" fill-opacity="0.8"/>
+  <circle cx="69.9" cy="78.6" r="2.2" fill="#bbbdbf" fill-opacity="0.8"/>
+  <circle cx="160.3" cy="78.4" r="2.2" fill="#bbbdbf" fill-opacity="0.8"/>
+  <circle cx="160.3" cy="78.4" r="2.2" fill="#bbbdbf" fill-opacity="0.8"/>
+  <circle cx="140.1" cy="73.6" r="2.2" fill="#abb3bc" fill-opacity="0.8"/>
+  <circle cx="159.5" cy="70.2" r="2.2" fill="#9facb9" fill-opacity="0.8"/>
+  <circle cx="92.3" cy="67.4" r="2.2" fill="#96a6b7" fill-opacity="0.8"/>
+  <circle cx="145.2" cy="66.3" r="2.2" fill="#92a4b7" fill-opacity="0.8"/>
+  <circle cx="160.8" cy="66.3" r="2.2" fill="#92a4b7" fill-opacity="0.8"/>
+  <circle cx="152.1" cy="66.2" r="2.2" fill="#92a4b7" fill-opacity="0.8"/>
+  <circle cx="154.0" cy="65.9" r="2.2" fill="#91a3b6" fill-opacity="0.8"/>
+  <circle cx="90.3" cy="65.3" r="2.2" fill="#8fa2b6" fill-opacity="0.8"/>
+  <circle cx="94.0" cy="63.4" r="2.2" fill="#889eb5" fill-opacity="0.8"/>
+  <circle cx="174.6" cy="63.2" r="2.2" fill="#889eb5" fill-opacity="0.8"/>
+  <circle cx="179.6" cy="62.5" r="2.2" fill="#859cb4" fill-opacity="0.8"/>
+  <circle cx="126.4" cy="60.9" r="2.2" fill="#8099b3" fill-opacity="0.8"/>
+  <circle cx="165.7" cy="59.4" r="2.2" fill="#7b96b2" fill-opacity="0.8"/>
+  <circle cx="139.2" cy="59.3" r="2.2" fill="#7b96b2" fill-opacity="0.8"/>
+  <circle cx="93.3" cy="59.1" r="2.2" fill="#7a95b2" fill-opacity="0.8"/>
+  <circle cx="82.1" cy="58.0" r="2.2" fill="#7693b1" fill-opacity="0.8"/>
+  <circle cx="152.9" cy="57.8" r="2.2" fill="#7692b1" fill-opacity="0.8"/>
+  <circle cx="170.6" cy="56.5" r="2.2" fill="#7190b0" fill-opacity="0.8"/>
+  <circle cx="159.3" cy="55.4" r="2.2" fill="#6d8eaf" fill-opacity="0.8"/>
+  <circle cx="158.3" cy="53.8" r="2.2" fill="#688aae" fill-opacity="0.8"/>
+  <circle cx="170.4" cy="53.2" r="2.2" fill="#6689ae" fill-opacity="0.8"/>
+  <circle cx="172.0" cy="52.9" r="2.2" fill="#6588ae" fill-opacity="0.8"/>
+  <circle cx="93.7" cy="51.7" r="2.2" fill="#6186ad" fill-opacity="0.8"/>
+  <circle cx="169.8" cy="50.8" r="2.2" fill="#5e84ac" fill-opacity="0.8"/>
+  <circle cx="108.2" cy="49.0" r="2.2" fill="#5880ab" fill-opacity="0.8"/>
+  <circle cx="110.0" cy="48.3" r="2.2" fill="#567fab" fill-opacity="0.8"/>
+  <circle cx="102.2" cy="47.1" r="2.2" fill="#527daa" fill-opacity="0.8"/>
+  <circle cx="167.7" cy="46.8" r="2.2" fill="#517caa" fill-opacity="0.8"/>
+  <circle cx="166.6" cy="44.3" r="2.2" fill="#4977a8" fill-opacity="0.8"/>
+  <circle cx="166.6" cy="43.9" r="2.2" fill="#4776a8" fill-opacity="0.8"/>
+  <circle cx="192.3" cy="41.5" r="2.2" fill="#3f71a6" fill-opacity="0.8"/>
+  <circle cx="200.0" cy="37.4" r="2.2" fill="#366ca4" fill-opacity="0.8"/>
+  <circle cx="94.0" cy="34.3" r="2.2" fill="#3269a3" fill-opacity="0.8"/>
+  <circle cx="93.9" cy="30.1" r="2.2" fill="#2c66a2" fill-opacity="0.8"/>
+  <circle cx="145.0" cy="29.9" r="2.2" fill="#2b66a2" fill-opacity="0.8"/>
+  <circle cx="132.0" cy="25.9" r="2.2" fill="#2663a0" fill-opacity="0.8"/>
+  <circle cx="132.0" cy="25.9" r="2.2" fill="#2663a0" fill-opacity="0.8"/>
+  <circle cx="152.3" cy="22.7" r="2.2" fill="#21609f" fill-opacity="0.8"/>
   <!-- Axes -->
   <line x1="0" y1="160" x2="200" y2="160" stroke="#222" stroke-width="1"/>
   <line x1="0" y1="0"   x2="0"   y2="160" stroke="#222" stroke-width="1"/>

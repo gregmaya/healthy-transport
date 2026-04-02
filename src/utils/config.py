@@ -169,3 +169,36 @@ CYCLING_SPEED = 4.17  # m/s (15 km/h)
 MAX_WALK_DISTANCE = 1200  # meters (10 min walk)
 MAX_CYCLE_DISTANCE = 5000  # meters (20 min cycle)
 NETWORK_BUFFER_M = MAX_WALK_DISTANCE  # buffer around boundary for network download
+
+# Bus segment scoring — per-group walking speeds (m/s)
+# Sources:
+#   Bohannon (1997): comfortable speed meta-analysis for working-age adults → 1.40 m/s
+#   Lusardi et al. (2003) + Winter et al. (1990): community-dwelling elderly → 0.90 m/s
+#   Plaut (2005) + Petzinger et al. (2015): school-age children → 1.00 m/s
+SCORING_WALKING_SPEEDS = {
+    "working_age": 1.40,  # m/s — Bohannon (1997)
+    "elderly":     0.90,  # m/s — Lusardi et al. (2003)
+    "children":    1.00,  # m/s — Plaut (2005)
+    "catchment":   1.40,  # m/s — same as working age (area-based, not population-weighted)
+}
+
+# Maximum walk time per group (minutes), anchored to WHO GAPPA (2018) 10-minute walk target.
+# Adjusted downward for groups with shorter effective walk radii.
+SCORING_WALK_MINUTES = {
+    "working_age": 10,
+    "elderly":      8,
+    "children":     7,
+    "catchment":   10,
+}
+
+# Gaussian B(t) curve parameters in minutes:
+#   peak_min  — time at which health benefit peaks
+#   sigma_min — standard deviation (controls width of peak)
+# Peak is set at the midpoint of max_minutes, modelling rising cardiovascular benefit
+# in the first half of the walk and deterrence-driven decay in the second half.
+SCORING_DECAY_PARAMS = {
+    "working_age": {"peak_min": 5.0,  "sigma_min": 2.4},
+    "elderly":     {"peak_min": 4.0,  "sigma_min": 2.0},
+    "children":    {"peak_min": 3.5,  "sigma_min": 1.75},
+    "catchment":   {"peak_min": 5.0,  "sigma_min": 2.4},
+}
