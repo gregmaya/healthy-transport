@@ -295,9 +295,15 @@ def compute_building_population(
     gdf_res["n_dwelling_units"] = gdf_res["unit_weight"]
 
     mid_pop_cols = [f"pop_{ag}_mid" for ag in AGE_GROUP_LABELS]
+    # Buffer-zone buildings (gm_id=null) have all-NA mid columns — use apply to skip them safely
+    def _dominant(row):
+        valid = row.dropna()
+        if valid.empty or valid.sum() == 0:
+            return None
+        return valid.idxmax()
     gdf_res["dominant_group"] = (
         gdf_res[mid_pop_cols]
-        .idxmax(axis=1)
+        .apply(_dominant, axis=1)
         .str.replace("_mid", "", regex=False)
         .str.replace("pop_", "", regex=False)
     )

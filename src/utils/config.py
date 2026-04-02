@@ -89,7 +89,7 @@ DAR_ADRESSEPUNKT_OUTPUT = DAR_RAW_DIR / "norrebro_dar_adressepunkt.gpkg"
 DAR_HUSNUMMER_OUTPUT = DAR_RAW_DIR / "norrebro_dar_husnummer.gpkg"
 
 # Building footprints configuration
-INSPIRE_BUILDINGS_FILE = DATA_DIR / "buildings" / "building_inspire.gpkg"
+INSPIRE_BUILDINGS_FILE = RAW_DATA_DIR / "buildings" / "building_inspire.gpkg"
 BUILDING_FOOTPRINTS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_building_footprints.gpkg"
 BUILDINGS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_buildings.gpkg"
 
@@ -169,6 +169,10 @@ CYCLING_SPEED = 4.17  # m/s (15 km/h)
 MAX_WALK_DISTANCE = 1200  # meters (10 min walk)
 MAX_CYCLE_DISTANCE = 5000  # meters (20 min cycle)
 NETWORK_BUFFER_M = MAX_WALK_DISTANCE  # buffer around boundary for network download
+SCORING_BUFFER_M = 1000  # metres — buffer around district for edge-effect correction
+# Segments near the boundary have truncated catchments because building/population data
+# is clipped to the district. Extending source data by SCORING_BUFFER_M ensures that
+# walkers living just outside the boundary contribute to near-boundary segment scores.
 
 # Bus segment scoring — per-group walking speeds (m/s)
 # Sources:

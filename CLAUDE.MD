@@ -184,6 +184,7 @@ These non-obvious rules affect code correctness — follow them always:
 8. **Candidate segments are bus-route segments only** — always filter the pedestrian network to segments within 15m of GTFS bus route lines before running the scoring loop. Never score the full network.
 9. **Existing stop locations are never scoring inputs** — they are a benchmark overlay applied after scoring to compare current provision against optimal zones. Using existing stops as inputs would merely evaluate the status quo rather than identify improvements.
 10. **Age-disaggregated population**: If address-level age data is unavailable, apply census-zone age distributions as weights. This assumption must be flagged clearly in the tool UI and in any output documentation.
+11. **Edge-effect buffer (`SCORING_BUFFER_M = 1000`)**: Building footprints (INSPIRE), BBR buildings, and DAR entrances are all clipped to a 1,000m buffer around the district boundary. Buffer-zone buildings get `gm_id = null` (no neighbourhood) and null population (Phase B fix pending). `score_catchment` benefits immediately; `score_health_*` improves only after Phase B population extension.
 
 ---
 

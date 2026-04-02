@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 10 complete — Time-based B(t) scoring, CitySeer dev branch `decay_fn`, frontend column rename, benefit-curve SVG update
+**Current Phase**: Phase 11 complete — Edge-effect correction Phase A: building/entrance/footprint data extended to 1,000m buffer; pipeline re-run; web data updated
 **Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
@@ -11,7 +11,14 @@
 
 ## Prioritised Next Steps
 
-1. **Resolve edge-artifact problem (Phase A — no new downloads)** — extend building/entrance data to 1,000m buffer: (a) increase DAR clip from 800m → 1,000m in `process_buildings.py:403`; (b) buffer INSPIRE clip in `clip_building_footprints.py:49`; (c) re-download BBR with larger bbox. Re-run integrate pipeline.
+1. **Run Phase A pipeline** — scripts are updated; now execute in order:
+   - `python scripts/download/download_bbr_dar.py` — re-download BBR with 1,000m buffer (requires Datafordeler credentials); DAR re-clip to 1,000m buffer
+   - `python scripts/process/clip_building_footprints.py` — re-clip INSPIRE to 1,000m buffer
+   - `python scripts/process/process_buildings.py` — reprocess BBR + DAR with new extents
+   - `python scripts/integrate/integrate_buildings.py` — re-run integration (buffer-zone buildings get `gm_id=null`, `attributes_source=unmatched` or `estimated`)
+   - `python scripts/integrate/integrate_population_typology.py` — re-run (buffer-zone buildings get null population — Phase B fix)
+   - `python scripts/score/score_bus_routes.py` — re-score; near-boundary `score_catchment` should improve
+   - `python scripts/export/export_bus_route_segments.py` — re-export GeoJSON for web
 2. **Resolve edge-artifact problem (Phase B — new data)** — obtain population data for adjacent districts from DST (`KKBEF8`/`KKBOL2`). Extend `integrate_population_typology.py` to accept multi-district inputs. Re-run scoring.
 3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
 4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).

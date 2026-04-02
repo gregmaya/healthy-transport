@@ -10,8 +10,8 @@ Building use codes are mapped to English descriptions per official BBR documenta
 
 Outputs:
     data/processed/norrebro_buildings.gpkg
-        Layer 'buildings': BBR building points within Nørrebro boundary
-        Layer 'entrances': DAR entrance points (TD/TK) within 800m of Nørrebro
+        Layer 'buildings': BBR building points within 1,000m buffer of Nørrebro boundary
+        Layer 'entrances': DAR entrance points (TD/TK) within 1,200m of Nørrebro
 
 Usage:
     python scripts/process/process_buildings.py
@@ -37,6 +37,7 @@ from utils.config import (
     MAX_WALK_DISTANCE,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
+    SCORING_BUFFER_M,
 )
 
 logging.basicConfig(
@@ -314,21 +315,23 @@ def main():
     boundary = gpd.read_file(NORREBRO_BOUNDARY_FILE, layer=NORREBRO_BOUNDARY_LAYER)
     logger.info("Loaded boundary: CRS %s", boundary.crs)
 
+    # Buffer for DAR entrances (loaded from disk, includes all-Copenhagen data)
     buffered = boundary.buffer(MAX_WALK_DISTANCE).union_all()
-    boundary_union = boundary.union_all()
+    # Scoring buffer for BBR buildings — extends past boundary for edge-effect correction
+    scoring_buffered = boundary.buffer(SCORING_BUFFER_M).union_all()
     bbox = box(*gpd.GeoSeries([buffered], crs=boundary.crs).total_bounds)
 
     # === Layer 1: buildings (BBR) ===
     logger.info("-" * 60)
-    logger.info("LAYER 1: buildings (BBR)")
+    logger.info("LAYER 1: buildings (BBR, clipped to %dm buffer)", SCORING_BUFFER_M)
     logger.info("-" * 60)
 
     bbr = gpd.read_file(BBR_OUTPUT_FILE)
     logger.info("Loaded %d BBR features", len(bbr))
 
-    # Re-verify spatial extent against boundary (no buffer — buildings IN neighbourhood)
-    bbr = bbr[bbr.intersects(boundary_union)]
-    logger.info("Verified %d buildings within Nørrebro boundary", len(bbr))
+    # Clip to scoring buffer (re-download with wider bbox if count is unexpectedly low)
+    bbr = bbr[bbr.intersects(scoring_buffered)]
+    logger.info("Clipped to %d buildings within %dm buffer", len(bbr), SCORING_BUFFER_M)
 
     # Select and rename columns
     bbr_cols = [c for c in BBR_COLUMNS if c in bbr.columns]

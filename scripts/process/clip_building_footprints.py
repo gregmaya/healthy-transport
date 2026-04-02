@@ -1,9 +1,13 @@
 """
-Clip INSPIRE Building Footprints to Nørrebro Boundary
+Clip INSPIRE Building Footprints to Nørrebro + 1,000m Buffer
 
-Reads the full INSPIRE building footprints dataset (~2.6 GB), clips to the
-Nørrebro boundary using a bbox mask for fast I/O followed by an intersects
-filter for precision, and saves the result as a GeoPackage.
+Reads the full INSPIRE building footprints dataset (~2.6 GB), clips to a 1,000m
+buffer around the Nørrebro boundary using a bbox mask for fast I/O followed by an
+intersects filter for precision, and saves the result as a GeoPackage.
+
+The 1,000m buffer (SCORING_BUFFER_M) ensures that buildings just outside the district
+boundary contribute to health-benefit scores for near-boundary bus-route segments,
+correcting the edge-truncation artifact in catchment calculations.
 
 Usage:
     python scripts/clip_building_footprints.py
@@ -25,6 +29,7 @@ from utils.config import (
     INSPIRE_BUILDINGS_FILE,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
+    SCORING_BUFFER_M,
 )
 
 logging.basicConfig(
@@ -37,26 +42,32 @@ logger = logging.getLogger(__name__)
 
 def main():
     logger.info("=" * 60)
-    logger.info("CLIP INSPIRE BUILDING FOOTPRINTS TO NØRREBRO")
+    logger.info("CLIP INSPIRE BUILDING FOOTPRINTS TO NØRREBRO + %dm BUFFER", SCORING_BUFFER_M)
     logger.info("=" * 60)
 
-    # 1. Load boundary
+    # 1. Load boundary and create buffered version for edge-effect correction
     boundary = gpd.read_file(NORREBRO_BOUNDARY_FILE, layer=NORREBRO_BOUNDARY_LAYER)
     logger.info("Loaded boundary: CRS %s", boundary.crs)
 
-    # 2. Create bounding box for fast spatial filtering on read
-    bounds = boundary.total_bounds
-    bbox = box(bounds[0], bounds[1], bounds[2], bounds[3])
-    logger.info("Bounding box: %s", bounds)
+    buffered_boundary = boundary.buffer(SCORING_BUFFER_M).union_all()
+    logger.info("Buffered boundary by %dm", SCORING_BUFFER_M)
+
+    # 2. Create bounding box from buffered boundary for fast spatial filtering on read
+    buffered_bounds = gpd.GeoSeries([buffered_boundary], crs=boundary.crs).total_bounds
+    bbox = box(buffered_bounds[0], buffered_bounds[1], buffered_bounds[2], buffered_bounds[3])
+    logger.info("Bounding box (buffered): %s", buffered_bounds)
 
     # 3. Read INSPIRE buildings masked to bbox (avoids loading full 2.6 GB)
-    logger.info("Reading INSPIRE buildings within bbox...")
+    logger.info("Reading INSPIRE buildings within buffered bbox...")
     buildings = gpd.read_file(INSPIRE_BUILDINGS_FILE, mask=bbox)
-    logger.info("Loaded %d buildings within bbox", len(buildings))
+    logger.info("Loaded %d buildings within buffered bbox", len(buildings))
 
-    # 4. Filter to buildings that intersect the actual boundary
-    buildings_clipped = buildings[buildings.intersects(boundary.unary_union)]
-    logger.info("Clipped to %d buildings within boundary", len(buildings_clipped))
+    # 4. Filter to buildings that intersect the buffered boundary
+    buildings_clipped = buildings[buildings.intersects(buffered_boundary)]
+    logger.info(
+        "Clipped to %d buildings within %dm buffer of boundary",
+        len(buildings_clipped), SCORING_BUFFER_M,
+    )
 
     # 5. Save
     BUILDING_FOOTPRINTS_OUTPUT.parent.mkdir(parents=True, exist_ok=True)

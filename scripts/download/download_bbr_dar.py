@@ -49,6 +49,7 @@ from utils.config import (
     DATAFORDELER_WFS,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
+    SCORING_BUFFER_M,
 )
 
 load_dotenv()
@@ -121,20 +122,28 @@ class DatafordelerenClient:
 
     def download_bbr(self, boundary_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         """
-        Download BBR building points within the study area boundary.
+        Download BBR building points within a SCORING_BUFFER_M buffer of the boundary.
+
+        The buffer (default 1,000m) ensures buildings just outside the district
+        contribute to health-benefit scores for near-boundary bus-route segments.
 
         Args:
             boundary_gdf: GeoDataFrame with the study area polygon (EPSG:25832)
 
         Returns:
-            GeoDataFrame of BBR building points clipped to boundary
+            GeoDataFrame of BBR building points clipped to buffered boundary
         """
-        bounds = boundary_gdf.total_bounds  # (minx, miny, maxx, maxy)
-        area_km2 = boundary_gdf.geometry.area.sum() / 1e6
+        # Buffer boundary for edge-effect correction
+        buffered_boundary = boundary_gdf.buffer(SCORING_BUFFER_M).union_all()
+        buffered_gdf = gpd.GeoDataFrame(
+            geometry=[buffered_boundary], crs=boundary_gdf.crs
+        )
+        bounds = buffered_gdf.total_bounds  # (minx, miny, maxx, maxy)
+        area_km2 = buffered_gdf.geometry.area.sum() / 1e6
 
         logger.info(
-            "Fetching BBR data — bbox: X %.0f–%.0f, Y %.0f–%.0f (%.1f km²)",
-            bounds[0], bounds[2], bounds[1], bounds[3], area_km2,
+            "Fetching BBR data — bbox with %dm buffer: X %.0f–%.0f, Y %.0f–%.0f (%.1f km²)",
+            SCORING_BUFFER_M, bounds[0], bounds[2], bounds[1], bounds[3], area_km2,
         )
 
         bbr = self._make_wfs_request(
@@ -159,16 +168,18 @@ class DatafordelerenClient:
                     logger.info("Removed %d duplicates (by %s)", removed, col)
                 break
 
-        # Clip to actual boundary (not just bbox)
+        # Clip to buffered boundary (not just bbox)
         if bbr.crs != boundary_gdf.crs:
-            boundary_gdf = boundary_gdf.to_crs(bbr.crs)
+            buffered_gdf = buffered_gdf.to_crs(bbr.crs)
 
         bbr_cols = list(bbr.columns)
-        bbr = gpd.sjoin(bbr, boundary_gdf[["geometry"]], how="inner", predicate="within")
+        bbr = gpd.sjoin(bbr, buffered_gdf[["geometry"]], how="inner", predicate="within")
         # Keep only original BBR columns
         bbr = bbr[[c for c in bbr_cols if c in bbr.columns]]
 
-        logger.info("After clipping to boundary: %d buildings", len(bbr))
+        logger.info(
+            "After clipping to %dm buffer: %d buildings", SCORING_BUFFER_M, len(bbr)
+        )
 
         # Log available key attributes
         for label, col_name in BBR_KEY_ATTRIBUTES.items():
@@ -394,19 +405,24 @@ def main():
             ap_gdf = adressepunkt_to_geodataframe(ap_records)
 
             if not ap_gdf.empty:
-                # Clip to Nørrebro boundary
+                # Clip to SCORING_BUFFER_M buffer around boundary for edge-effect correction
+                buffered_boundary = boundary.buffer(SCORING_BUFFER_M).union_all()
+                buffered_gdf = gpd.GeoDataFrame(
+                    geometry=[buffered_boundary], crs=boundary.crs
+                )
                 if ap_gdf.crs != boundary.crs:
-                    boundary_reproj = boundary.to_crs(ap_gdf.crs)
-                else:
-                    boundary_reproj = boundary
+                    buffered_gdf = buffered_gdf.to_crs(ap_gdf.crs)
 
                 ap_cols = list(ap_gdf.columns)
                 ap_clipped = gpd.sjoin(
-                    ap_gdf, boundary_reproj[["geometry"]], how="inner", predicate="within"
+                    ap_gdf, buffered_gdf[["geometry"]], how="inner", predicate="within"
                 )
                 ap_clipped = ap_clipped[[c for c in ap_cols if c in ap_clipped.columns]]
 
-                logger.info("Adressepunkt: %d in Copenhagen → %d in Nørrebro", len(ap_gdf), len(ap_clipped))
+                logger.info(
+                    "Adressepunkt: %d in Copenhagen → %d within %dm of Nørrebro",
+                    len(ap_gdf), len(ap_clipped), SCORING_BUFFER_M,
+                )
 
                 DAR_RAW_DIR.mkdir(parents=True, exist_ok=True)
                 ap_clipped.to_file(DAR_ADRESSEPUNKT_OUTPUT, driver="GPKG")
