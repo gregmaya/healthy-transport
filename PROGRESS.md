@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 11 complete — Edge-effect correction Phase A: building/entrance/footprint data extended to 1,000m buffer; pipeline re-run; web data updated
+**Current Phase**: Phase 12 complete — score_catchment redesigned as B(t)-weighted reachable network length (exp decay, excluding motorway/trunk/cycleway/busway); pipeline re-run; scatter SVG updated
 **Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
@@ -11,18 +11,12 @@
 
 ## Prioritised Next Steps
 
-1. **Run Phase A pipeline** — scripts are updated; now execute in order:
-   - `python scripts/download/download_bbr_dar.py` — re-download BBR with 1,000m buffer (requires Datafordeler credentials); DAR re-clip to 1,000m buffer
-   - `python scripts/process/clip_building_footprints.py` — re-clip INSPIRE to 1,000m buffer
-   - `python scripts/process/process_buildings.py` — reprocess BBR + DAR with new extents
-   - `python scripts/integrate/integrate_buildings.py` — re-run integration (buffer-zone buildings get `gm_id=null`, `attributes_source=unmatched` or `estimated`)
-   - `python scripts/integrate/integrate_population_typology.py` — re-run (buffer-zone buildings get null population — Phase B fix)
-   - `python scripts/score/score_bus_routes.py` — re-score; near-boundary `score_catchment` should improve
-   - `python scripts/export/export_bus_route_segments.py` — re-export GeoJSON for web
-2. **Resolve edge-artifact problem (Phase B — new data)** — obtain population data for adjacent districts from DST (`KKBEF8`/`KKBOL2`). Extend `integrate_population_typology.py` to accept multi-district inputs. Re-run scoring.
-3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
-4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
-5. **Segment hover/click popup** — show scores on hover in interactive mode.
+1. **Resolve edge-artifact problem (Phase B — new data)** — obtain population data for adjacent districts from DST (`KKBEF8`/`KKBOL2`). Extend `integrate_population_typology.py` to accept multi-district inputs. Re-run scoring. Note: `score_catchment` is already unaffected by boundary truncation (network-based); this primarily improves `score_health_*` near boundary.
+2. **Validate in QGIS** — confirm park-adjacent segments (Fælledparken, Assistens Kirkegård) now score higher on `score_catchment` than before the Phase 12 redesign.
+3. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on the 1,699 exported segments; should drop from ~0.8 (old area-based) to ~0.3 (new network-based).
+4. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
+5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
+6. **Segment hover/click popup** — show scores on hover in interactive mode.
 
 ---
 

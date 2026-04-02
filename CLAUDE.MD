@@ -97,7 +97,8 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | `norrebro_greenspace_access.geojson` | 20m segments scored by network distance to parks/playgrounds | Not yet |
 
 **Score column naming convention** (all scored layers, as of `scripts/score/score_bus_routes.py`):
-- `score_catchment` — B(t) × total_area_m2 per building (deduped by building_id); no population weighting; replaces `score_baseline`
+
+- `score_catchment` — `exp(-4 * p)` × edge_length_m per reachable dual-graph node (primal edge length); pure supply-side network accessibility, independent of buildings/population; excludes motorway/trunk/cycleway/busway edges; 10-min horizon at 1.40 m/s; replaces old floor-area-based `score_baseline`
 - `score_health_working_age` — B(t) × pop working-age (15–64), mid scenario; normalised share
 - `score_health_elderly` — B(t) × pop elderly (65+), mid scenario; normalised share
 - `score_health_children` — B(t) × pop children (0–14), mid scenario; normalised share

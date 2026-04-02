@@ -16,10 +16,13 @@ Key improvements over the notebook:
     remapping and stop enrichment
 
 Score columns produced (on live bus-route segments):
-  score_catchment           — B(t) × total_area_m2 per building; globally normalised [0,1]
-  score_health_working_age  — B(t) × pop_working_age (15–64), mid scenario; globally normalised
-  score_health_elderly      — B(t) × pop_elderly (65+), mid scenario; globally normalised
-  score_health_children     — B(t) × pop_children (0–14), mid scenario; globally normalised
+  score_catchment           — exp(-4*p)-decayed reachable NETWORK LENGTH (metres);
+                              pure supply-side score independent of building/population data;
+                              cycleway, motorway, trunk, busway edges excluded (zero length);
+                              globally normalised [0,1]
+  score_health_working_age  — Gaussian B(t) × pop_working_age (15–64), mid scenario; globally normalised
+  score_health_elderly      — Gaussian B(t) × pop_elderly (65+), mid scenario; globally normalised
+  score_health_children     — Gaussian B(t) × pop_children (0–14), mid scenario; globally normalised
   score_health_combined     — equal-weight mean of three group scores
 
 Normalisation: global (score / max across all live nodes). This preserves relative
@@ -73,6 +76,16 @@ log = logging.getLogger(__name__)
 BUS_ROUTE_BUFFER_M = 15  # segments within this distance of a GTFS bus route are scored
 INTERIOR_BUFFER_M  = 80  # midpoint this far inside boundary → interior=True
 
+# Highway types excluded from catchment scoring (length set to 0).
+# These edges stay in the routing graph for connectivity but do not contribute
+# to "reachable walkable network" — pedestrians don't walk on these surfaces.
+CATCHMENT_EXCLUDED_HIGHWAYS = {"motorway", "motorway_link", "trunk", "cycleway", "busway"}
+
+# Decay function for catchment score: CitySeer default exponential.
+# Monotonically rewards nearer network over farther network; no Gaussian peak
+# shape needed here (catchment is a supply-side reach score, not a health curve).
+CATCHMENT_DECAY_FN = "exp(-4 * p)"
+
 SCORE_COLS = [
     "score_catchment",
     "score_health_working_age",
@@ -99,6 +112,31 @@ def main() -> None:
     gdf_edges = gpd.read_file(PEDESTRIAN_NETWORK_GPKG, layer="edges")
     log.info("Network edges: %d", len(gdf_edges))
 
+    # Tag edges excluded from catchment scoring (non-walkable surface types).
+    # Values may be a plain string or a stringified list from OSM multi-tagging.
+    import ast as _ast
+
+    def _is_excluded(val) -> bool:
+        if val is None:
+            return False
+        if isinstance(val, list):
+            return any(h in CATCHMENT_EXCLUDED_HIGHWAYS for h in val)
+        if isinstance(val, str) and val.startswith("["):
+            try:
+                parsed = _ast.literal_eval(val)
+                return any(h in CATCHMENT_EXCLUDED_HIGHWAYS for h in parsed)
+            except (ValueError, SyntaxError):
+                pass
+        return val in CATCHMENT_EXCLUDED_HIGHWAYS
+
+    if "highway" in gdf_edges.columns:
+        gdf_edges["_catchment_excluded"] = gdf_edges["highway"].apply(_is_excluded)
+        n_excl = gdf_edges["_catchment_excluded"].sum()
+        log.info("Catchment-excluded edges (non-walkable highway types): %d / %d", n_excl, len(gdf_edges))
+    else:
+        gdf_edges["_catchment_excluded"] = False
+        log.warning("No 'highway' column found on network edges — no edges excluded from catchment")
+
     log.info("Loading bus routes from %s", TRANSPORT_STOPS_OUTPUT)
     gdf_routes = gpd.read_file(TRANSPORT_STOPS_OUTPUT, layer="routes").to_crs(CRS_DENMARK)
     bus_routes = gdf_routes[gdf_routes["transport_mode"] == "bus"].reset_index(drop=True)
@@ -121,6 +159,47 @@ def main() -> None:
     log.info("Converting to dual graph (primal edges → dual nodes) ...")
     G_dual = graphs.nx_to_dual(G)
     log.info("Dual graph: %d nodes (= 20m segments)", G_dual.number_of_nodes())
+
+    # ==========================================================================
+    # 3. Mark live nodes — only segments on bus routes receive scores
+    # ==========================================================================
+
+    # ==========================================================================
+    # 3a. Build catchment data layer: one row per dual-graph node
+    #     weight = primal edge length (metres), zeroed for excluded highway types
+    # ==========================================================================
+
+    log.info("Building network_nodes_gdf for catchment scoring ...")
+    network_rows = []
+    for node_id, data in G_dual.nodes(data=True):
+        primal_edge = data.get("primal_edge")
+        if primal_edge is not None:
+            network_rows.append({
+                "_node_id": str(node_id),
+                "geometry": primal_edge.centroid,
+                "edge_length_m": primal_edge.length,
+            })
+
+    network_nodes_gdf = gpd.GeoDataFrame(network_rows, crs=CRS_DENMARK)
+
+    # Zero out excluded highway types via spatial proximity to original edges.
+    # Buffer of 2m catches the centroid of any 20m decomposed segment that lies on
+    # an excluded edge without incorrectly flagging adjacent parallel edges.
+    excluded_edges = gdf_edges[gdf_edges["_catchment_excluded"]].copy()
+    if len(excluded_edges) > 0:
+        excluded_union = excluded_edges.geometry.buffer(2).union_all()
+        on_excluded = network_nodes_gdf.geometry.within(excluded_union)
+        network_nodes_gdf.loc[on_excluded, "edge_length_m"] = 0.0
+        log.info("Zeroed %d dual nodes on excluded highway types (of %d total)",
+                 int(on_excluded.sum()), len(network_nodes_gdf))
+
+    log.info(
+        "network_nodes_gdf: %d rows, walkable length %.1f km (%.1f km total before exclusion)",
+        len(network_nodes_gdf),
+        network_nodes_gdf["edge_length_m"].sum() / 1000,
+        sum(d.get("primal_edge").length for _, d in G_dual.nodes(data=True)
+            if d.get("primal_edge") is not None) / 1000,
+    )
 
     # ==========================================================================
     # 3. Mark live nodes — only segments on bus routes receive scores
@@ -167,17 +246,11 @@ def main() -> None:
     )
     entrances["pop_children"] = entrances["pop_children_0_14_mid"].fillna(0)
 
-    # Catchment weight: total built floor area regardless of use type.
-    # Residential, commercial, institutional and mixed-use all contribute equally —
-    # catchment is about physical proximity to built destinations, not residential stock.
-    entrances["weight_area"] = entrances["total_area_m2"].fillna(0)
-
     log.info(
-        "Population totals — working_age: %.0f  elderly: %.0f  children: %.0f  area(m²): %.0f",
+        "Population totals — working_age: %.0f  elderly: %.0f  children: %.0f",
         entrances["pop_working_age"].sum(),
         entrances["pop_elderly"].sum(),
         entrances["pop_children"].sum(),
-        entrances["weight_area"].sum(),
     )
 
     # ==========================================================================
@@ -199,7 +272,7 @@ def main() -> None:
         ("working_age", "pop_working_age", "working_age"),
         ("elderly",     "pop_elderly",     "elderly"),
         ("children",    "pop_children",    "children"),
-        ("catchment",   "weight_area",     "catchment"),
+        # catchment is handled separately below (different data_gdf and decay_fn)
     ]
 
     for label, data_col, group in run_config:
@@ -242,6 +315,43 @@ def main() -> None:
             # Rename to a stable internal name to avoid collision across group calls
             nodes_gdf[f"_raw_{label}"] = nodes_gdf[raw_col]
             log.info("  raw column: %s → _raw_%s", raw_col, label)
+
+    # ==========================================================================
+    # 5b. Catchment: exp(-4*p)-decayed reachable walkable network length
+    #
+    # Uses network_nodes_gdf (one row per dual node, weight = edge length in metres)
+    # rather than building entrances, so the score is entirely independent of
+    # population and building data.  Non-walkable edge types are pre-zeroed.
+    # ==========================================================================
+
+    catchment_speed   = SCORING_WALKING_SPEEDS["catchment"]  # 1.40 m/s
+    catchment_max_min = SCORING_WALK_MINUTES["catchment"]     # 10 min
+
+    log.info(
+        "compute_stats [catchment]  reachable network length  speed=%.2f m/s  max=%d min  decay=%s",
+        catchment_speed, catchment_max_min, CATCHMENT_DECAY_FN,
+    )
+
+    nodes_gdf, _ = layers.compute_stats(
+        data_gdf=network_nodes_gdf,
+        stats_column_labels=["edge_length_m"],
+        nodes_gdf=nodes_gdf,
+        network_structure=network_structure,
+        minutes=[catchment_max_min],
+        speed_m_s=catchment_speed,
+        data_id_col="_node_id",
+        decay_fn=CATCHMENT_DECAY_FN,
+    )
+
+    catchment_dist_m = int(round(catchment_max_min * 60 * catchment_speed))
+    catchment_raw_col = f"cc_edge_length_m_sum_{catchment_dist_m}"
+    if catchment_raw_col not in nodes_gdf.columns:
+        found = [c for c in nodes_gdf.columns if "edge_length_m" in c and "_sum_" in c]
+        log.warning("Expected column %s not found. Found: %s", catchment_raw_col, found)
+        catchment_raw_col = found[0] if found else None
+    if catchment_raw_col:
+        nodes_gdf["_raw_catchment"] = nodes_gdf[catchment_raw_col]
+        log.info("  raw column: %s → _raw_catchment", catchment_raw_col)
 
     # ==========================================================================
     # 6. Normalise scores globally across live segments
