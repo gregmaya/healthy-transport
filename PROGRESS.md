@@ -11,7 +11,7 @@
 
 ## Prioritised Next Steps
 
-1. **Resolve edge-artifact problem (Phase B — new data)** — obtain population data for adjacent districts from DST (`KKBEF8`/`KKBOL2`). Extend `integrate_population_typology.py` to accept multi-district inputs. Re-run scoring. Note: `score_catchment` is already unaffected by boundary truncation (network-based); this primarily improves `score_health_*` near boundary.
+1. **Resolve edge-artifact problem (Phase B — extend population to buffer zone)** — `all_districts_population.csv` is ready (67 sub-districts, `scripts/process/parse_kkbef8_all_districts.py`). Remaining steps: (a) extend `integrate_population_typology.py` to spatially assign buffer-zone buildings to adjacent sub-districts via `copenhagen_kvartergrænser.gpkg` and load the new CSV; (b) re-run full pipeline.
 2. **Validate in QGIS** — confirm park-adjacent segments (Fælledparken, Assistens Kirkegård) now score higher on `score_catchment` than before the Phase 12 redesign.
 3. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on the 1,699 exported segments; should drop from ~0.8 (old area-based) to ~0.3 (new network-based).
 4. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
@@ -243,6 +243,12 @@ Output folder: `data/integrated/`
 - [ ] Headline metric panel: total daily walking-minutes for current stop configuration
 - [ ] Seamless handoff from scrollytelling narrative
 - [ ] *(Post-MVP)* "Drop a hypothetical stop" — marginal benefit of a new stop location
+
+### UI Wishlist (deferred upgrades)
+
+- [ ] **Adjustable legend midpoint (Baseline mode)** — legend slider that lets the user drag the diverging colour midpoint up/down for `score_catchment`; useful for tuning contrast in dense vs sparse areas. The current ramp is a fixed domain; this would rescale it client-side without re-fetching data. Contextual (health) mode is harder (three separate group ramps) — defer or implement independently.
+- [ ] **Stop colours match active score mode** — stops are currently coloured by a fixed column regardless of the Baseline/Contextual toggle. They should recolour to `score_catchment` in Baseline mode and to the selected group's `score_health_*` in Contextual mode, using the same ramp as the segment layer so the two representations are visually consistent.
+- [ ] **Pedestrian network overlay** — an additional toggle in the Overlays section that renders the full walking network used for scoring (from `norrebro_pedestrian_network.gpkg` edges, exported to GeoJSON). Thin grey lines, low opacity; helps users understand why certain segments score high (dense grid) vs low (sparse connectivity). Note: file is large (~2 MB) — may need simplification or tile conversion before shipping.
 
 ---
 
