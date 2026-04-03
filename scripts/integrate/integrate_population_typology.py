@@ -358,14 +358,15 @@ def main():
     gdf_buildings = gdf_buildings.copy()
     gdf_buildings = gdf_buildings.drop(columns=["gm_id"], errors="ignore")
 
-    joined = gpd.sjoin(
-        gdf_buildings[["building_id", "geometry"]],
-        kvartergraenser,
-        how="left",
-        predicate="within",
+    # Use centroids for the join: polygon `within` is too strict near boundaries
+    # (footprints straddling a district edge would get null). Centroid gives the
+    # correct district for all but the smallest edge slivers.
+    bldg_cents = gpd.GeoDataFrame(
+        {"_idx": gdf_buildings.index},
+        geometry=gdf_buildings.geometry.centroid,
+        crs=gdf_buildings.crs,
     )
-    # Use the original DataFrame index (not building_id) so that KNN buildings
-    # with null building_id are also assigned correctly.
+    joined = gpd.sjoin(bldg_cents, kvartergraenser, how="left", predicate="within")
     joined = joined[~joined.index.duplicated(keep="first")]
     gdf_buildings["gm_id"] = joined["kvarternr"]
 

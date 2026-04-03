@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase B complete — gm_id unified to kvarternr (68 sub-districts); buffer-zone population extended via spatial join against `copenhagen_kvartergrænser.gpkg`; total population 379,653; pipeline re-run; scatter SVG updated
+**Current Phase**: Phase B complete (incl. Frederiksberg fix) — kvarternr centroid join (100% coverage); Frederiksberg DAR entrances added (89 points, `add_frederiksberg_dar.py`); full pipeline re-run; entrances_demographics 44,114 rows; scatter SVG updated
 **Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
