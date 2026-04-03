@@ -11,6 +11,12 @@ household sizes to age-group profiles. A pycnophylactic normalization step
 ensures neighbourhood × age group totals match the processed population CSV
 exactly in all three scenarios.
 
+Geographic key: all buildings (Nørrebro core + 1,000m buffer zone) are assigned
+a kvarternr via spatial join against the official Statistics Denmark sub-district
+boundaries (copenhagen_kvartergrænser.gpkg, 68 districts including Frederiksberg).
+This replaces the old artificial gm_id 1–5 system which only covered the Nørrebro
+core and left buffer-zone buildings with null population.
+
 Outputs:
     data/integrated/norrebro_buildings.gpkg
         - entrances_demographics layer: all entrances + demographic columns
@@ -34,7 +40,6 @@ from utils.config import (
     DWELLINGS_CSV,
     ENTRANCES_DEMOGRAPHICS_LAYER,
     INTEGRATED_BUILDINGS,
-    POPULATION_CSV,
 )
 
 logging.basicConfig(
@@ -185,9 +190,19 @@ def compute_building_population(
         gdf_res.loc[mask, "unit_weight"] = med
     n_fallback = null_mask.sum()
     logger.info(
-        "Buildings using fallback median: %d (%.1f%%)",
+        "Buildings using neighbourhood-median fallback: %d (%.1f%%)",
         n_fallback,
         n_fallback / len(gdf_res) * 100,
+    )
+
+    # Global fallback for buildings still null (buffer-zone kvarternr groups with
+    # no BBR buildings have no neighbourhood median to use).
+    global_median = gdf_res.loc[bbr_mask, "antal_boliger"].median()
+    still_null = gdf_res["unit_weight"].isna()
+    gdf_res.loc[still_null, "unit_weight"] = global_median
+    logger.info(
+        "Buildings using global-median fallback: %d (global median = %.1f units)",
+        still_null.sum(), global_median,
     )
 
     # --- Unit share within neighbourhood ---
@@ -255,12 +270,19 @@ def compute_building_population(
         gdf_res[total_col] = gdf_res[pop_cols_s].sum(axis=1)
         pop_cols_s.append(total_col)
 
-        # Validate
+        # Validate pycnophylactic constraint for Nørrebro core districts only.
+        # Buffer-zone districts (surrounding sub-districts) are deliberately excluded:
+        # we only hold a fraction of their buildings (~1km buffer), so their building
+        # sums will not match the full district CSV totals — that is expected behaviour.
+        NORREBRO_KVARTERNR = {20401, 20402, 20403, 20404, 20405}
         all_ok = True
         for ag in AGE_GROUP_LABELS:
-            hood_sum = gdf_res.groupby("gm_id")[f"pop_{ag}_{scenario}"].sum()
+            hood_sum = gdf_res[gdf_res["gm_id"].isin(NORREBRO_KVARTERNR)].groupby("gm_id")[f"pop_{ag}_{scenario}"].sum()
             csv_total = (
-                pop_by_group[pop_by_group["age_group"] == ag]
+                pop_by_group[
+                    (pop_by_group["age_group"] == ag)
+                    & (pop_by_group["gm_id"].isin(NORREBRO_KVARTERNR))
+                ]
                 .set_index("gm_id")["people"]
             )
             diff = (hood_sum - csv_total).abs().max()
@@ -271,7 +293,7 @@ def compute_building_population(
                 all_ok = False
         if all_ok:
             logger.info(
-                "Validation OK [%s]: all neighbourhood × age group totals preserved",
+                "Validation OK [%s]: Nørrebro core (kvarternr 20401–20405) totals preserved",
                 scenario,
             )
         logger.info(
@@ -316,14 +338,51 @@ def compute_building_population(
     return gdf_res[out_cols + ["geometry"]].copy()
 
 
+KVARTERGRAENSER = PROJECT_ROOT / "data" / "raw" / "demographics" / "copenhagen_kvartergrænser.gpkg"
+ALL_POP_CSV = PROJECT_ROOT / "data" / "processed" / "all_districts_population.csv"
+
+
 def main():
     logger.info("Loading buildings from %s", INTEGRATED_BUILDINGS)
     gdf_buildings = gpd.read_file(INTEGRATED_BUILDINGS, layer="buildings")
     logger.info("Total buildings: %s", f"{len(gdf_buildings):,}")
 
-    logger.info("Loading population CSV from %s", POPULATION_CSV)
-    df_pop = pd.read_csv(POPULATION_CSV)
-    logger.info("Population rows: %d, total people: %s", len(df_pop), f"{df_pop['people'].sum():,}")
+    # --- Assign kvarternr to ALL buildings via spatial join ---
+    # Replaces the old gm_id 1–5 system (Nørrebro-only) with official Statistics Denmark
+    # sub-district codes covering all 68 districts in the 1,000m buffer zone.
+    logger.info("Loading sub-district boundaries from %s", KVARTERGRAENSER)
+    kvartergraenser = gpd.read_file(KVARTERGRAENSER)[["kvarternr", "geometry"]]
+    kvartergraenser = kvartergraenser.to_crs(gdf_buildings.crs)
+
+    logger.info("Assigning kvarternr to all %s buildings via spatial join ...", f"{len(gdf_buildings):,}")
+    gdf_buildings = gdf_buildings.copy()
+    gdf_buildings = gdf_buildings.drop(columns=["gm_id"], errors="ignore")
+
+    joined = gpd.sjoin(
+        gdf_buildings[["building_id", "geometry"]],
+        kvartergraenser,
+        how="left",
+        predicate="within",
+    )
+    # Use the original DataFrame index (not building_id) so that KNN buildings
+    # with null building_id are also assigned correctly.
+    joined = joined[~joined.index.duplicated(keep="first")]
+    gdf_buildings["gm_id"] = joined["kvarternr"]
+
+    n_assigned = gdf_buildings["gm_id"].notna().sum()
+    n_null = gdf_buildings["gm_id"].isna().sum()
+    logger.info(
+        "kvarternr assigned: %s buildings (%.1f%%), %s null (parks/water/slivers)",
+        f"{n_assigned:,}", n_assigned / len(gdf_buildings) * 100, f"{n_null:,}",
+    )
+
+    # --- Load unified population CSV (all 68 districts) ---
+    logger.info("Loading all-districts population CSV from %s", ALL_POP_CSV)
+    df_pop = pd.read_csv(ALL_POP_CSV)
+    logger.info(
+        "Population rows: %d across %d districts, total people: %s",
+        len(df_pop), df_pop["gm_id"].nunique(), f"{df_pop['people'].sum():,}",
+    )
 
     logger.info("Loading dwellings CSV from %s", DWELLINGS_CSV)
     df_dwell = pd.read_csv(DWELLINGS_CSV)

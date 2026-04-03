@@ -87,9 +87,9 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 | File | Content | Status |
 |---|---|---|
-| `norrebro_bus_segments_scored.geojson` | 1,699 bus-route segments (GTFS geometry, ≤20m), 5 score columns + `interior` flag (WGS84) — **re-run needed** after script change | ⚠️ stale |
+| `norrebro_bus_segments_scored.geojson` | 1,699 bus-route segments (GTFS geometry, ≤20m), 5 score columns + `interior` flag (WGS84) | ✅ current (Phase B) |
 | `norrebro_boundary.geojson` | District boundary (WGS84, 16 KB) | ✅ exists |
-| `norrebro_stops.geojson` | 552 bus stops benchmark layer with all `score_*` columns (WGS84) — **re-run needed** | ⚠️ stale |
+| `norrebro_stops.geojson` | 552 bus stops benchmark layer with all `score_*` columns (WGS84) | ✅ current (Phase B) |
 | `norrebro_bus_routes_context.geojson` | 68 dissolved GTFS bus route geometries for context display (WGS84, 149 KB) | ✅ exists |
 | `norrebro_demographics.geojson` | 10,175 entrance points for demographics heatmap; includes low/high/unc_pct columns (WGS84, 7.7 MB) | ✅ exists |
 | `norrebro_neighbourhoods.geojson` | 5 sub-neighbourhood polygons (WGS84, 33 KB) — exported but not used in frontend | ✅ exists |
@@ -186,7 +186,7 @@ These non-obvious rules affect code correctness — follow them always:
 8. **Candidate segments are bus-route segments only** — always filter the pedestrian network to segments within 15m of GTFS bus route lines before running the scoring loop. Never score the full network.
 9. **Existing stop locations are never scoring inputs** — they are a benchmark overlay applied after scoring to compare current provision against optimal zones. Using existing stops as inputs would merely evaluate the status quo rather than identify improvements.
 10. **Age-disaggregated population**: If address-level age data is unavailable, apply census-zone age distributions as weights. This assumption must be flagged clearly in the tool UI and in any output documentation.
-11. **Edge-effect buffer (`SCORING_BUFFER_M = 1000`)**: Building footprints (INSPIRE), BBR buildings, and DAR entrances are all clipped to a 1,000m buffer around the district boundary. Buffer-zone buildings get `gm_id = null` (no neighbourhood) and null population (Phase B fix pending). `score_catchment` benefits immediately; `score_health_*` improves only after Phase B population extension.
+11. **Edge-effect buffer (`SCORING_BUFFER_M = 1000`)**: Building footprints (INSPIRE), BBR buildings, and DAR entrances are all clipped to a 1,000m buffer around the district boundary. Buffer-zone buildings are assigned to official `kvarternr` sub-districts via spatial join against `copenhagen_kvartergrænser.gpkg` (68 districts); population is drawn from `all_districts_population.csv`. Groups with no BBR buildings use a global median unit weight fallback. Pycnophylactic validation restricted to Nørrebro core (kvarternr 20401–20405). Phase B complete: 22,406/22,447 buildings assigned (99.8%), total population 379,653.
 
 ---
 
@@ -249,14 +249,13 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Run scoring pipeline** — `python scripts/score/score_bus_routes.py` then `python scripts/export/export_bus_route_segments.py`. Validate new score columns in `data/web/norrebro_bus_segments_scored.geojson`.
-2. **Update frontend column references** — `web/js/config.js`, `web/js/scatter.js`, `web/js/tool.js` still use old names (`score_baseline`, `score_aggregate_mid`, `score_*_mid_share`). Grep and replace with new names.
-3. **Resolve edge-artifact problem** — 84.8% of bus-route segments are within 80m of the district boundary (truncated catchments). Options: (a) extend scoring boundary by ~200m and clip back; (b) use `interior=True` filter for published layer; (c) document as limitation with UI flag.
-4. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
-5. **Segment hover/click popup** — show score on hover in interactive mode.
-6. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
-7. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
-8. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.
+1. **Validate Phase B in QGIS** — confirm buffer-zone entrances have non-null population columns; confirm boundary-adjacent bus-stop scores are higher than pre-Phase-B run.
+2. **Correlation check** — Pearson r(`score_catchment`, `score_health_combined`) on 552 stops should be lower than old ~0.8 value.
+3. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
+4. **Segment hover/click popup** — show score on hover in interactive mode.
+5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
+6. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
+7. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.
 
 ---
 

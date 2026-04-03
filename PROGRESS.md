@@ -1,6 +1,6 @@
 # Progress Tracker
 
-**Current Phase**: Phase 12 complete — score_catchment redesigned as B(t)-weighted reachable network length (exp decay, excluding motorway/trunk/cycleway/busway); pipeline re-run; scatter SVG updated
+**Current Phase**: Phase B complete — gm_id unified to kvarternr (68 sub-districts); buffer-zone population extended via spatial join against `copenhagen_kvartergrænser.gpkg`; total population 379,653; pipeline re-run; scatter SVG updated
 **Last Updated**: April 2026
 
 > This project follows the reorientation decisions documented in
@@ -11,9 +11,9 @@
 
 ## Prioritised Next Steps
 
-1. **Resolve edge-artifact problem (Phase B — extend population to buffer zone)** — `all_districts_population.csv` is ready (68 sub-districts incl. Frederiksberg, `scripts/process/parse_kkbef8_all_districts.py` + `add_frederiksberg.py`). Remaining steps: (a) extend `integrate_population_typology.py` to spatially assign buffer-zone buildings to adjacent sub-districts via `copenhagen_kvartergrænser.gpkg` and load the new CSV; (b) re-run full pipeline.
-2. **Validate in QGIS** — confirm park-adjacent segments (Fælledparken, Assistens Kirkegård) now score higher on `score_catchment` than before the Phase 12 redesign.
-3. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on the 1,699 exported segments; should drop from ~0.8 (old area-based) to ~0.3 (new network-based).
+1. **Validate Phase B in QGIS** — confirm buffer-zone entrances now have non-null population columns; confirm boundary-adjacent segments score higher on `score_health_*` than before Phase B.
+2. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on the 552 exported stops; should be lower than old area-based version (~0.8) due to decoupled catchment definition.
+3. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs.
 4. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.
 5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries (GTFS centroids are not entrance-level accurate).
 6. **Segment hover/click popup** — show scores on hover in interactive mode.
