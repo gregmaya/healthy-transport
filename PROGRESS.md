@@ -11,7 +11,7 @@
 
 ## Prioritised Next Steps
 
-1. **Resolve edge-artifact problem (Phase B — extend population to buffer zone)** — `all_districts_population.csv` is ready (67 sub-districts, `scripts/process/parse_kkbef8_all_districts.py`). Remaining steps: (a) extend `integrate_population_typology.py` to spatially assign buffer-zone buildings to adjacent sub-districts via `copenhagen_kvartergrænser.gpkg` and load the new CSV; (b) re-run full pipeline.
+1. **Resolve edge-artifact problem (Phase B — extend population to buffer zone)** — `all_districts_population.csv` is ready (68 sub-districts incl. Frederiksberg, `scripts/process/parse_kkbef8_all_districts.py` + `add_frederiksberg.py`). Remaining steps: (a) extend `integrate_population_typology.py` to spatially assign buffer-zone buildings to adjacent sub-districts via `copenhagen_kvartergrænser.gpkg` and load the new CSV; (b) re-run full pipeline.
 2. **Validate in QGIS** — confirm park-adjacent segments (Fælledparken, Assistens Kirkegård) now score higher on `score_catchment` than before the Phase 12 redesign.
 3. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on the 1,699 exported segments; should drop from ~0.8 (old area-based) to ~0.3 (new network-based).
 4. **Implement scroll transition functions** — `showCatchmentRing`, `showBenefitCurves` are still stubs; `showScoredNetwork`, `showGapAnalysis` use `fitBounds(NORREBRO_BOUNDS)`.

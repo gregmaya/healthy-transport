@@ -69,7 +69,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | `norrebro_cycling.gpkg` | `cykeldata`: 3,638 cycling network lines (citywide) · `cykelstativ`: 1,664 bike parking points |
 | `norrebro_greenspaces.gpkg` | `parks`: 77 polygons · `playgrounds`: 34 points |
 | `norrebro_neighbourhoods_population.csv` | 5 Nørrebro sub-neighbourhoods, age group breakdowns (source for typology model) |
-| `all_districts_population.csv` | All 67 Copenhagen sub-districts (`kvarternr` as `gm_id`), 20 age bands — produced by `scripts/process/parse_kkbef8_all_districts.py`; used in Phase B to give buffer-zone buildings real population |
+| `all_districts_population.csv` | All 68 sub-districts incl. Frederiksberg (`kvarternr`/`147` as `gm_id`), 20 age bands — produced by `parse_kkbef8_all_districts.py` + `add_frederiksberg.py`; used in Phase B |
 | `norrebro_neighbourhoods_dwellings.csv` | Dwelling types and household sizes |
 | `heat_inputs.json` | All WHO HEAT web tool input parameters |
 | `health_survey_by_age.csv` | 126 rows (7 indicators x age x gender) |
