@@ -247,6 +247,17 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ---
 
+## Frontend Design System
+
+`web/css/style.css` follows a **Geometric Minimal+** design system:
+
+- **Fonts**: Outfit (headings) · Work Sans (body) · Space Mono (labels, tags, panel headers) — loaded via Google Fonts
+- **Palette rule**: `--blue-2/3/4` and `--accent (#ff6700)` are **data-viz only** (map score ramp, demographic bars, legend). All UI chrome uses neutral variables: `--text #111827`, `--muted #6b7280`, `--border #e5e7eb`, `--border-subtle #f3f4f6`, `--bg #ffffff`
+- **Shadows**: neutral grey (`rgba(0,0,0,...)`) — no blue cast
+- **Dev server**: run `bash scripts/dev.sh` from project root (builds `dist/` mirroring GitHub Pages structure with GeoJSON data files)
+
+---
+
 ## Immediate Next Steps
 
 1. **Validate Phase B in QGIS** — confirm buffer-zone entrances have non-null population columns; confirm boundary-adjacent bus-stop scores are higher than pre-Phase-B run.
