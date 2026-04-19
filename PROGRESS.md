@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: April 2026*
+*Last updated: 2026-04-19*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).

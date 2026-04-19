@@ -10,6 +10,8 @@ Approach all work in this project as an excellent geospatial data scientist with
 
 > **Before every `git commit`**: update both `PROGRESS.md` and `CLAUDE.MD` to reflect the current project state. A `.git/hooks/pre-commit` hook enforces this by blocking commits where neither file is staged.
 
+> **`.gitignore` note**: `.claude/settings.local.json` and `.claude/skills/` are gitignored — they contain machine-local Claude Code permissions and personal skill definitions. Do not re-add them.
+
 ---
 
 ## Binding Design Decisions
