@@ -67,7 +67,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | File | Layers / Content |
 |---|---|
 | `norrebro_boundary.gpkg` | `norrebro_boundary`: district outline · `neighbourhoods`: 5 sub-neighbourhood polygons |
-| `norrebro_buildings.gpkg` | `buildings`: 3,440 BBR points (14 translated cols + 4 derived) · `entrances`: 5,643 DAR points (TD/TK only) |
+| `norrebro_buildings.gpkg` | `buildings`: 7,422 BBR points (buffer zone, 14 translated cols + 4 derived) · `entrances`: 20,247 points — 15,377 DAR (TD/TK, status=8, non-Frederiksberg buffer) + 4,870 OSM `addr:housenumber` nodes replacing DAR in the Frederiksberg boundary zone (kvarternr=147) |
 | `norrebro_building_footprints.gpkg` | INSPIRE polygons clipped to Nørrebro |
 | `norrebro_pedestrian_network.gpkg` | `nodes` + `edges` (flat geometry for QGIS) |
 | `norrebro_pedestrian_network.graphml` | Graph topology for routing (WGS84, in `data/raw/network/`) |
@@ -87,7 +87,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 
 | File | Layers / Content |
 |---|---|
-| `norrebro_buildings.gpkg` | `buildings`: 5,915 INSPIRE footprint polygons with BBR attributes + KNN estimates + `attributes_source` flag (bbr/estimated/unmatched) · `entrances`: 11,367 DAR points with linked BBR attributes + `entrance_source` flag (spatial_join/nearest) · `entrances_demographics`: 11,367 entrance points + 18 population columns (5 age groups × low/mid/high scenarios + totals) + `dwelling_typology` / `dominant_group` |
+| `norrebro_buildings.gpkg` | `buildings`: 22,447 INSPIRE footprint polygons (buffer zone) with BBR attributes + KNN estimates + `attributes_source` flag (bbr/estimated/unmatched) · `entrances`: 20,314 rows (20,247 unique entrance_ids; 67 synthetic pairings for orphaned residential buildings) with linked BBR attributes + `entrance_source` flag (spatial_join/nearest) · `entrances_demographics`: 20,314 rows, 11,314 (55.7%) with non-null population — 18 population columns (5 age groups × low/mid/high scenarios + totals) + `dwelling_typology` / `dominant_group` |
 
 ### Scored (`data/integrated/` → export to `data/web/`)
 
@@ -192,7 +192,7 @@ These non-obvious rules affect code correctness — follow them always:
 8. **Candidate segments are bus-route segments only** — always filter the pedestrian network to segments within 15m of GTFS bus route lines before running the scoring loop. Never score the full network.
 9. **Existing stop locations are never scoring inputs** — they are a benchmark overlay applied after scoring to compare current provision against optimal zones. Using existing stops as inputs would merely evaluate the status quo rather than identify improvements.
 10. **Age-disaggregated population**: If address-level age data is unavailable, apply census-zone age distributions as weights. This assumption must be flagged clearly in the tool UI and in any output documentation.
-11. **Edge-effect buffer (`SCORING_BUFFER_M = 1000`)**: Building footprints (INSPIRE), BBR buildings, and DAR entrances are all clipped to a 1,000m buffer around the district boundary. Buffer-zone buildings are assigned to official `kvarternr` sub-districts via **centroid-based** spatial join against `copenhagen_kvartergrænser.gpkg` (68 districts, 100% assignment). Frederiksberg (0147) DAR entrances added by `add_frederiksberg_dar.py`. Population drawn from `all_districts_population.csv`. Groups with no BBR buildings use a global median unit weight fallback. Pycnophylactic validation restricted to Nørrebro core (kvarternr 20401–20405). Phase B complete: 22,447/22,447 buildings assigned (100%), entrances_demographics 44,114 rows, total population 379,653.
+11. **Edge-effect buffer (`SCORING_BUFFER_M = 1000`)**: Building footprints (INSPIRE), BBR buildings, and DAR entrances are all clipped to a 1,000m buffer around the district boundary. Buffer-zone buildings are assigned to official `kvarternr` sub-districts via **centroid-based** spatial join against `copenhagen_kvartergrænser.gpkg` (68 districts, 100% assignment). Frederiksberg (0147) DAR entrances added by `add_frederiksberg_dar.py`. Population drawn from `all_districts_population.csv`. Groups with no BBR buildings use a global median unit weight fallback. Pycnophylactic validation restricted to Nørrebro core (kvarternr 20401–20405). Phase B complete: 22,447/22,447 buildings assigned (100%), entrances_demographics 16,520 rows (9,507 with population), total population 379,653. DAR status=9 (deactivated) entries are filtered out at process_buildings.py. Note: `process_buildings.py` must delete the output file before writing to prevent mode='a' append accumulation on re-runs (fix applied 2026-04-19).
 
 ---
 

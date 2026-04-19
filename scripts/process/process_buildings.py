@@ -33,10 +33,13 @@ from utils.config import (
     BBR_ENHED_CSV,
     BBR_OUTPUT_FILE,
     BUILDINGS_OUTPUT,
+    CRS_DENMARK,
     DAR_ADRESSEPUNKT_OUTPUT,
+    KVARTERGRAENSER_FILE,
     MAX_WALK_DISTANCE,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
+    OSM_FREDERIKSBERG_ADDRESSES,
     SCORING_BUFFER_M,
 )
 
@@ -385,8 +388,10 @@ def main():
     for era, count in bbr["construction_era"].value_counts().items():
         logger.info("  %s: %d", era, count)
 
-    # Save
+    # Save — delete first to prevent mode='a' append accumulation on re-runs
     BUILDINGS_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    if BUILDINGS_OUTPUT.exists():
+        BUILDINGS_OUTPUT.unlink()
     bbr.to_file(BUILDINGS_OUTPUT, layer="buildings", driver="GPKG")
     logger.info("Saved layer 'buildings': %d features, %d columns", len(bbr), len(bbr.columns))
 
@@ -402,6 +407,11 @@ def main():
     dar = dar[dar["oprindelse_tekniskStandard"].isin(["TD", "TK"])]
     logger.info("Filtered to %d valid entrances (TD/TK)", len(dar))
 
+    # Filter out deactivated entrances (status=9 = nedlagt/closed in DAR)
+    before = len(dar)
+    dar = dar[dar["status"] != "9"]
+    logger.info("Filtered out %d deactivated (status=9) entrances; %d remain", before - len(dar), len(dar))
+
     # Clip to 800m buffer
     dar = dar[dar.intersects(buffered)]
     logger.info("Clipped to %d entrances within %dm buffer", len(dar), MAX_WALK_DISTANCE)
@@ -409,6 +419,32 @@ def main():
     # Select and rename columns
     dar_cols = [c for c in DAR_COLUMNS if c in dar.columns]
     dar = dar[dar_cols + ["geometry"]].rename(columns=DAR_COLUMNS)
+
+    # === Frederiksberg zone: replace sparse DAR with OSM address nodes ===
+    if OSM_FREDERIKSBERG_ADDRESSES.exists():
+        kvarter = gpd.read_file(KVARTERGRAENSER_FILE).to_crs(CRS_DENMARK)
+        fred_geom = kvarter[kvarter["kvarternr"] == 147].geometry.union_all()
+        n_before = len(dar)
+        dar = dar[~dar.within(fred_geom)]
+        n_removed = n_before - len(dar)
+        logger.info("Removed %d DAR points inside Frederiksberg boundary", n_removed)
+
+        osm = gpd.read_file(OSM_FREDERIKSBERG_ADDRESSES).to_crs(CRS_DENMARK)
+        osm = osm[osm.intersects(buffered)]  # clip to MAX_WALK_DISTANCE buffer
+        dar = pd.concat([dar, osm], ignore_index=True)
+        dar = gpd.GeoDataFrame(dar, geometry="geometry", crs=CRS_DENMARK)
+        logger.info(
+            "Added %d OSM nodes for Frederiksberg; total entrances: %d (DAR: %d, OSM: %d)",
+            len(osm),
+            len(dar),
+            (~dar["entrance_id"].str.startswith("osm_")).sum(),
+            dar["entrance_id"].str.startswith("osm_").sum(),
+        )
+    else:
+        logger.info(
+            "OSM supplement not found (%s) — writing DAR-only entrances",
+            OSM_FREDERIKSBERG_ADDRESSES,
+        )
 
     # Log positioning type distribution
     logger.info("Positioning type distribution:")

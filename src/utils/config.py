@@ -92,6 +92,8 @@ DAR_HUSNUMMER_OUTPUT = DAR_RAW_DIR / "norrebro_dar_husnummer.gpkg"
 INSPIRE_BUILDINGS_FILE = RAW_DATA_DIR / "buildings" / "building_inspire.gpkg"
 BUILDING_FOOTPRINTS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_building_footprints.gpkg"
 BUILDINGS_OUTPUT = PROCESSED_DATA_DIR / "norrebro_buildings.gpkg"
+OSM_FREDERIKSBERG_ADDRESSES = PROCESSED_DATA_DIR / "osm_frederiksberg_addresses.gpkg"
+KVARTERGRAENSER_FILE = RAW_DATA_DIR / "demographics" / "copenhagen_kvartergrænser.gpkg"
 
 # Pedestrian network configuration
 NETWORK_RAW_DIR = RAW_DATA_DIR / "network"

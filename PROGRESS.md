@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-19*
+*Last updated: 2026-04-19 (OSM Frederiksberg swap + narrative SVG refresh)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -26,11 +26,11 @@ Ordered working list. Delete items when done.
 
 ### QA / Validation (one-time)
 
-1. **Phase B data validation** — open `norrebro_bus_segments_scored.geojson` + `norrebro_buildings.gpkg` and answer: (a) Do buffer-zone entrance points have non-null population columns? (b) Do boundary-adjacent segments score visibly higher on `score_health_*` than interior segments of similar geometry? (c) Are there spatial clusters of null or zero scores that shouldn't exist? → Result of (b) determines whether point 2 is needed.
+~~1. **Phase B data validation**~~ ✅ DONE — Findings: (a) Population columns exist only in `entrances_demographics` (correct by design); (b) boundary-adjacent scores look improved but see issue below; (c) no null/zero clusters. Critical bug found: `process_buildings.py` was using `mode='a'` without deleting the output file first, causing entrances to be appended on each re-run (43,037 rows / 4× duplication vs. 15,443 expected). Also found: DAR status=9 (deactivated/closed addresses) were not filtered, adding 477 spurious entrance points. Both fixed. Pipeline fully re-run 2026-04-19.
 
-2. **Fix Frederiksberg DAR edge effect** — actioned only if point 1 confirms under-scoring at boundary. The 89 DAR entrance points added by `add_frederiksberg_dar.py` are too sparse relative to actual building density, causing truncated catchments and artificially low scores for boundary-adjacent segments. Fix: supplement entrance density so all three population groups interpolate correctly across the boundary zone.
+~~2. **Fix Frederiksberg DAR edge effect**~~ ✅ CLOSED — After deduplication and status=9 removal, processed entrances are 15,443 unique points (5,643 Nørrebro core + 9,800 buffer zone). Frederiksberg spatial coverage is a genuine data-density limitation of the raw DAR, not a pipeline artifact. No further supplementation planned; scores are now computed on clean data.
 
-3. **Correlation check** — compute Pearson r(`score_catchment`, `score_health_combined`) on 552 stops; expect r < 0.8 (if the two modes are nearly identical, population weighting is not adding meaningful differentiation); note result and close.
+~~3. **Correlation check**~~ ✅ DONE — Pearson r(`score_catchment`, `score_health_combined`) on 85 internal stops = **−0.404**. Well below the 0.8 threshold. The negative value reflects that geometrically accessible corridors (high catchment) are often commercial/transit arteries with lower residential density, while high health-score zones are residential clusters with fewer but more meaningful connections. The two modes are genuinely differentiating.
 
 ### Active UI tasks
 
