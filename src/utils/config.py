@@ -157,6 +157,7 @@ WEB_DATA_DIR = DATA_DIR / "web"
 WEB_SEGMENTS_GEOJSON = WEB_DATA_DIR / "norrebro_bus_segments_scored.geojson"
 WEB_BOUNDARY_GEOJSON = WEB_DATA_DIR / "norrebro_boundary.geojson"
 WEB_STOPS_GEOJSON = WEB_DATA_DIR / "norrebro_stops.geojson"
+WEB_PARKS_GEOJSON = WEB_DATA_DIR / "norrebro_parks.geojson"
 
 # Integrated data outputs
 INTEGRATED_BUILDINGS = INTEGRATED_DATA_DIR / "norrebro_buildings.gpkg"

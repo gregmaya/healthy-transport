@@ -51,6 +51,7 @@ from src.utils.config import (
     CRS_DENMARK,
     CRS_WGS84,
     ENTRANCES_DEMOGRAPHICS_LAYER,
+    GREENSPACES_OUTPUT,
     INTEGRATED_BUILDINGS,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
@@ -92,6 +93,13 @@ SCORE_COLS = [
     "score_health_elderly",
     "score_health_children",
     "score_health_combined",
+]
+
+GREEN_COLS = [
+    "green_pct_catchment",
+    "green_time_working_age",
+    "green_time_elderly",
+    "green_time_children",
 ]
 
 
@@ -146,6 +154,11 @@ def main() -> None:
     boundary      = gpd.read_file(NORREBRO_BOUNDARY_FILE, layer=NORREBRO_BOUNDARY_LAYER).to_crs(CRS_DENMARK)
     boundary_poly = boundary.geometry.union_all()
 
+    log.info("Loading park polygons from %s", GREENSPACES_OUTPUT)
+    parks     = gpd.read_file(GREENSPACES_OUTPUT, layer="parks").to_crs(CRS_DENMARK)
+    park_union = parks.geometry.union_all()
+    log.info("Parks: %d polygons, union area %.2f km²", len(parks), park_union.area / 1e6)
+
     # ==========================================================================
     # 2. Build dual pedestrian network
     # ==========================================================================
@@ -169,7 +182,7 @@ def main() -> None:
     #     weight = primal edge length (metres), zeroed for excluded highway types
     # ==========================================================================
 
-    log.info("Building network_nodes_gdf for catchment scoring ...")
+    log.info("Building network_nodes_gdf — computing edge_length_m and green_length_m per dual node ...")
     network_rows = []
     for node_id, data in G_dual.nodes(data=True):
         primal_edge = data.get("primal_edge")
@@ -178,6 +191,7 @@ def main() -> None:
                 "_node_id": str(node_id),
                 "geometry": primal_edge.centroid,
                 "edge_length_m": primal_edge.length,
+                "green_length_m": primal_edge.intersection(park_union).length,
             })
 
     network_nodes_gdf = gpd.GeoDataFrame(network_rows, crs=CRS_DENMARK)
@@ -190,6 +204,7 @@ def main() -> None:
         excluded_union = excluded_edges.geometry.buffer(2).union_all()
         on_excluded = network_nodes_gdf.geometry.within(excluded_union)
         network_nodes_gdf.loc[on_excluded, "edge_length_m"] = 0.0
+        network_nodes_gdf.loc[on_excluded, "green_length_m"] = 0.0
         log.info("Zeroed %d dual nodes on excluded highway types (of %d total)",
                  int(on_excluded.sum()), len(network_nodes_gdf))
 
@@ -354,6 +369,62 @@ def main() -> None:
         log.info("  raw column: %s → _raw_catchment", catchment_raw_col)
 
     # ==========================================================================
+    # 5c. Green Paths: decay-weighted green network length per group
+    #
+    # Uses network_nodes_gdf with green_length_m (proportion of each 20m edge
+    # that falls inside a park polygon, zeroed for non-walkable edge types).
+    #
+    # Four passes:
+    #   - green_catchment   : exp(-4*p) decay, 1.40 m/s → green_pct_catchment
+    #   - green_working_age : Gaussian, 1.40 m/s → green_time_working_age (min)
+    #   - green_elderly     : Gaussian, 0.90 m/s → green_time_elderly (min)
+    #   - green_children    : Gaussian, 1.00 m/s → green_time_children (min)
+    #
+    # Note: catchment and working_age share the same dist_m (840m).  Each raw
+    # column is renamed and dropped before the next pass to avoid collision.
+    # ==========================================================================
+
+    # One pass: same decay and speed as catchment score.
+    # green_pct_catchment = _raw_green_catchment / _raw_catchment (dimensionless ratio).
+    # Per-group green time is derived as green_pct_catchment × SCORING_WALK_MINUTES[group]
+    # in section 6b — no separate group passes needed.
+    green_run_config = [
+        # (label,           speed_key,   min_key,    decay_fn)
+        ("green_catchment", "catchment", "catchment", CATCHMENT_DECAY_FN),
+    ]
+
+    for label, speed_key, min_key, decay_expr in green_run_config:
+        speed   = SCORING_WALKING_SPEEDS[speed_key]
+        max_min = SCORING_WALK_MINUTES[min_key]
+        dist_m  = int(round(max_min * 60 * speed))
+
+        log.info(
+            "compute_stats [%s]  green paths  speed=%.2f m/s  max=%d min  dist=%dm",
+            label, speed, max_min, dist_m,
+        )
+        nodes_gdf, _ = layers.compute_stats(
+            data_gdf=network_nodes_gdf,
+            stats_column_labels=["green_length_m"],
+            nodes_gdf=nodes_gdf,
+            network_structure=network_structure,
+            minutes=[max_min],
+            speed_m_s=speed,
+            data_id_col="_node_id",
+            decay_fn=decay_expr,
+        )
+
+        raw_col = f"cc_green_length_m_sum_{dist_m}"
+        if raw_col not in nodes_gdf.columns:
+            found = [c for c in nodes_gdf.columns if "green_length_m" in c and "_sum_" in c]
+            log.warning("Expected column %s not found. Found: %s", raw_col, found)
+            raw_col = found[0] if found else None
+
+        if raw_col:
+            nodes_gdf[f"_raw_{label}"] = nodes_gdf[raw_col]
+            nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
+            log.info("  raw column: %s → _raw_%s (dropped original)", raw_col, label)
+
+    # ==========================================================================
     # 6. Normalise scores globally across live segments
     #
     # Global normalisation: score / max(score across live nodes).
@@ -398,6 +469,37 @@ def main() -> None:
     _log_score("score_health_combined", nodes_gdf["score_health_combined"].values)
 
     # ==========================================================================
+    # 6b. Green Paths output columns (not normalised — ratios and absolute minutes)
+    #
+    # green_pct_catchment   : fraction of reachable walkable network through parks [0, 1]
+    # green_time_{group}    : decay-weighted green network length / group_speed / 60 (minutes)
+    # ==========================================================================
+
+    log.info("Computing green paths output columns ...")
+    if "_raw_green_catchment" in nodes_gdf.columns and "_raw_catchment" in nodes_gdf.columns:
+        raw_green = nodes_gdf["_raw_green_catchment"].fillna(0)
+        raw_total = nodes_gdf["_raw_catchment"].replace(0, np.nan)
+        nodes_gdf["green_pct_catchment"] = (raw_green / raw_total).fillna(0).clip(0, 1).round(4)
+    else:
+        log.warning("green_pct_catchment: raw columns missing, setting to 0")
+        nodes_gdf["green_pct_catchment"] = 0.0
+
+    # green_time_{group} = green_pct_catchment × max_walk_minutes_{group}
+    # Interpretation: "if this person walks the full max time to the stop,
+    # how many minutes are through green space?"
+    for group in ("working_age", "elderly", "children"):
+        col_out = f"green_time_{group}"
+        max_min = SCORING_WALK_MINUTES[group]
+        if "green_pct_catchment" in nodes_gdf.columns:
+            nodes_gdf[col_out] = (nodes_gdf["green_pct_catchment"] * max_min).round(3)
+        else:
+            nodes_gdf[col_out] = 0.0
+
+    _log_score("green_pct_catchment", nodes_gdf["green_pct_catchment"].values)
+    for group in ("working_age", "elderly", "children"):
+        _log_score(f"green_time_{group}", nodes_gdf[f"green_time_{group}"].values)
+
+    # ==========================================================================
     # 7. Interior flag
     # ==========================================================================
 
@@ -431,11 +533,11 @@ def main() -> None:
 
     log.info("Live segments to export: %d", len(live_segs))
 
-    for col in SCORE_COLS:
+    for col in SCORE_COLS + GREEN_COLS:
         if col in live_segs.columns:
             live_segs[col] = live_segs[col].round(5)
 
-    out_cols = ["geometry", "interior"] + [c for c in SCORE_COLS if c in live_segs.columns]
+    out_cols = ["geometry", "interior"] + [c for c in SCORE_COLS + GREEN_COLS if c in live_segs.columns]
     live_segs[out_cols].to_crs(CRS_WGS84).to_file(WEB_SEGMENTS_GEOJSON, driver="GeoJSON")
     log.info(
         "Exported pedestrian scored segments → %s  (%d features, %.0f KB)",

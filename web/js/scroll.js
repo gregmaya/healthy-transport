@@ -13,6 +13,7 @@ import {
   setActiveGroup,
   toggleStops,
   toggleDemographics,
+  toggleParks,
   getStopFeatures,
   setScoreMode,
   setStopSelectCallback,
@@ -244,6 +245,12 @@ export function initToolPanel() {
     bldgChk.addEventListener("change", () => toggleDemographics(bldgChk.checked));
   }
 
+  // Parks overlay toggle
+  const parksChk = document.getElementById("toggle-parks");
+  if (parksChk) {
+    parksChk.addEventListener("change", () => toggleParks(parksChk.checked));
+  }
+
   // Score mode pill toggle
   document.querySelectorAll(".mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -261,9 +268,49 @@ export function initToolPanel() {
     });
   });
 
-  // Cross-highlight: map stop click ↔ scatter dot click
-  setStopSelectCallback(id => highlightScatterStop(id));
-  setScatterSelectCallback(id => highlightMapStop(id));
+  // Green Path Access block — populate from stop features
+  function _updateGreenBlock(stopFeatures, selectedStopId) {
+    const pctEl   = document.getElementById("kpi-green-pct");
+    const noteEl  = document.getElementById("green-context-note");
+    const waEl    = document.getElementById("green-time-working-age");
+    const elEl    = document.getElementById("green-time-elderly");
+    const chEl    = document.getElementById("green-time-children");
+    if (!pctEl) return;
+
+    if (selectedStopId && stopFeatures) {
+      const f = stopFeatures.find(f => f.properties.stop_id === selectedStopId && !f.properties.context);
+      if (f) {
+        const p = f.properties;
+        pctEl.textContent  = p.green_pct_catchment != null ? `${(+p.green_pct_catchment * 100).toFixed(0)}%` : "—";
+        if (waEl) waEl.textContent = p.green_time_working_age != null ? `${(+p.green_time_working_age).toFixed(1)} min` : "—";
+        if (elEl) elEl.textContent = p.green_time_elderly     != null ? `${(+p.green_time_elderly).toFixed(1)} min`     : "—";
+        if (chEl) chEl.textContent = p.green_time_children    != null ? `${(+p.green_time_children).toFixed(1)} min`    : "—";
+        if (noteEl) noteEl.textContent = `Selected stop · ${p.stop_name || p.stop_id}`;
+        return;
+      }
+    }
+
+    // District average across internal stops
+    if (!stopFeatures) return;
+    const internal = stopFeatures.filter(f => !f.properties.context);
+    if (!internal.length) return;
+    const avg = (col) => internal.reduce((s, f) => s + (+f.properties[col] || 0), 0) / internal.length;
+    pctEl.textContent  = `${(avg("green_pct_catchment") * 100).toFixed(0)}%`;
+    if (waEl) waEl.textContent = `${avg("green_time_working_age").toFixed(1)} min`;
+    if (elEl) elEl.textContent = `${avg("green_time_elderly").toFixed(1)} min`;
+    if (chEl) chEl.textContent = `${avg("green_time_children").toFixed(1)} min`;
+    if (noteEl) noteEl.textContent = `District average · ${internal.length} scored stops`;
+  }
+
+  // Cross-highlight: map stop click ↔ scatter dot click; also update green block
+  setStopSelectCallback(id => {
+    highlightScatterStop(id);
+    _updateGreenBlock(getStopFeatures(), id);
+  });
+  setScatterSelectCallback(id => {
+    highlightMapStop(id);
+    _updateGreenBlock(getStopFeatures(), id);
+  });
 
   // CTA button inside the last narrative step (wired initially; re-wired on tab switch)
   const enterBtn = document.getElementById("btn-enter-tool");
@@ -272,7 +319,10 @@ export function initToolPanel() {
       enterInteractiveTool();
       const tryInit = () => {
         const features = getStopFeatures();
-        if (features) { initScatter(features); }
+        if (features) {
+          initScatter(features);
+          _updateGreenBlock(features, null);
+        }
         else { setTimeout(tryInit, 200); }
       };
       tryInit();

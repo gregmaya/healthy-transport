@@ -76,6 +76,7 @@ function _addSources() {
   map.addSource("stops-src",        { type: "geojson", data: DATA.stops });
   map.addSource("demographics-src", { type: "geojson", data: DATA.demographics });
   map.addSource("footprints-src",   { type: "geojson", data: DATA.footprints });
+  map.addSource("parks-src",        { type: "geojson", data: DATA.parks });
 
   // Pre-fetch segment features; apply dynamic ramp once loaded
   fetch(DATA.segments).then(r => r.json()).then(d => {
@@ -114,6 +115,22 @@ function _addLayers() {
     type: "line",
     source: "boundary-src",
     paint: { "line-color": "#2171b5", "line-width": 1.5, "line-dasharray": [4, 3] },
+  });
+
+  // Park polygons — hidden initially (toggled by overlay checkbox).
+  map.addLayer({
+    id: "parks-fill",
+    type: "fill",
+    source: "parks-src",
+    layout: { visibility: "none" },
+    paint: { "fill-color": "#4caf50", "fill-opacity": 0.25 },
+  });
+  map.addLayer({
+    id: "parks-line",
+    type: "line",
+    source: "parks-src",
+    layout: { visibility: "none" },
+    paint: { "line-color": "#2e7d32", "line-width": 1, "line-opacity": 0.6 },
   });
 
   // Demographics heatmap — hidden initially (toggled by overlay checkbox).
@@ -281,6 +298,14 @@ function _addPopups() {
         <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_health_elderly)}</span></div>
         <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_health_children)}</span></div>`;
 
+      const greenRow = isBaseline
+        ? (p.green_pct_catchment != null
+            ? `<div class="popup-score-row popup-score-sub" style="color:#2e7d32"><span>Green paths</span><span>${(+p.green_pct_catchment * 100).toFixed(1)}%</span></div>`
+            : "")
+        : (p.green_time_working_age != null
+            ? `<div class="popup-score-row popup-score-sub" style="color:#2e7d32"><span>In green (WA / El / Ch)</span><span>${(+p.green_time_working_age).toFixed(1)} / ${(+p.green_time_elderly).toFixed(1)} / ${(+p.green_time_children).toFixed(1)} min</span></div>`
+            : "");
+
       _segPopup
         .setLngLat(e.lngLat)
         .setHTML(`
@@ -288,6 +313,7 @@ function _addPopups() {
           <div class="popup-score-row"><span>${modeName}</span><span>${dec(rawScore)}</span></div>
           <div class="popup-category" style="color:${band.color}">${band.label}</div>
           ${groupRows}
+          ${greenRow}
         `)
         .addTo(map);
     });
@@ -538,6 +564,12 @@ export function toggleStops(visible) {
 
 export function toggleDemographics(visible) {
   _setVisibility("demographics-heatmap", visible ? "visible" : "none");
+}
+
+export function toggleParks(visible) {
+  const v = visible ? "visible" : "none";
+  _setVisibility("parks-fill", v);
+  _setVisibility("parks-line", v);
 }
 
 

@@ -11,6 +11,7 @@ export const DATA = {
   footprints:    "data/web/norrebro_building_footprints.geojson",
   rail_stops:    "data/web/norrebro_rail_stops_scored.geojson",   // not yet generated
   green_spaces:  "data/web/norrebro_greenspace_access.geojson",   // not yet generated
+  parks:         "data/web/norrebro_parks.geojson",
 };
 
 // Nørrebro bounding box [lng_min, lat_min, lng_max, lat_max]

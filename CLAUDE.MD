@@ -110,6 +110,8 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 - `score_health_elderly` — B(t) × pop elderly (65+), mid scenario; normalised share
 - `score_health_children` — B(t) × pop children (0–14), mid scenario; normalised share
 - `score_health_combined` — equal-weight mean of three group shares; replaces `score_aggregate_mid`
+- `green_pct_catchment` — fraction [0, 1] of decay-weighted reachable network through park polygons; `_raw_green / _raw_catchment`, both using `exp(-4*p)` / 1.40 m/s / 10 min; not normalised
+- `green_time_working_age` / `_elderly` / `_children` — `green_pct_catchment × max_walk_minutes[group]` (0–6.1 min range); interpretation: "if this person walks the full max time to the stop, how many minutes are in green space?"
 
 **Walking speeds used in B(t) curves** (literature-grounded):
 - Working age (18–64): 1.40 m/s — Bohannon (1997) meta-analysis; max 10 min walk

@@ -123,7 +123,7 @@
         <div class="info-popup hidden" id="info-popup-overlays">
           <p><strong>Bus stops</strong> — existing stop locations from the national GTFS feed (Rejseplanen). Internal stops are coloured by their score; use them to compare current provision against high-benefit segments.</p>
           <p><strong>Demographics</strong> — population density heatmap built from modelled entrance-level estimates. Darker = denser residential concentration. Switch demographic group to update the heatmap weight.</p>
-          <p><strong>Parks &amp; green spaces</strong> — coming soon.</p>
+          <p><strong>Parks &amp; green spaces</strong> — 77 park polygons from the Copenhagen parks register. Toggle to see which streets are close to green space.</p>
         </div>
 
         <label class="toggle-row">
@@ -134,9 +134,9 @@
           <input type="checkbox" id="toggle-demographics-bldg" />
           Population
         </label>
-        <label class="toggle-row toggle-row--disabled">
-          <input type="checkbox" id="toggle-parks" disabled />
-          Green spaces <span class="badge">coming soon</span>
+        <label class="toggle-row">
+          <input type="checkbox" id="toggle-parks" />
+          Green spaces
         </label>
       </div>
 
@@ -189,13 +189,30 @@
       <div id="scatter-container"></div>
     </div>
 
-    <!-- Green Path Access placeholder -->
-    <div class="chart-block chart-block--placeholder" id="greenspace-placeholder">
-      <div class="chart-block-header">
-        Green Path Access
-        <span class="tag-tbd">TBD</span>
+    <!-- Green Path Access -->
+    <div class="chart-block" id="green-path-block">
+      <div class="chart-block-header">Green Path Access</div>
+      <div class="pop-stat">
+        <span class="kpi-value" id="kpi-green-pct">—</span>
+        <div class="pop-label-row">
+          <span class="kpi-label" id="green-pct-label">of routes pass through parks</span>
+        </div>
       </div>
-      <p class="placeholder-note">Percentage of pedestrian paths passing through green spaces — methodology in progress.</p>
+      <div class="demo-bars-section">
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Working-age<span class="demo-bar-age"> in green</span></span>
+          <span class="demo-bar-pct" id="green-time-working-age">—</span>
+        </div>
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Elderly<span class="demo-bar-age"> in green</span></span>
+          <span class="demo-bar-pct" id="green-time-elderly">—</span>
+        </div>
+        <div class="demo-bar-row">
+          <span class="demo-bar-label">Children<span class="demo-bar-age"> in green</span></span>
+          <span class="demo-bar-pct" id="green-time-children">—</span>
+        </div>
+      </div>
+      <p class="age-bar-note" id="green-context-note">District average · all scored stops</p>
     </div>
 
     <!-- Population stat + age bar chart -->

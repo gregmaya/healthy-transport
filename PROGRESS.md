@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-19 (OSM Frederiksberg swap + narrative SVG refresh + score mode rename)*
+*Last updated: 2026-04-19 (Green Paths pipeline + Parks overlay layer)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -42,7 +42,7 @@ Ordered working list. Delete items when done.
 
 ### MVP completeness block *(ship together)*
 
-7. **Green Paths pipeline** — for each bus-route segment: compute the length of the segment falling within green area polygons (`norrebro_greenspaces.gpkg`); use cityseer `compute_stats` to derive total path length and green path length per stop; apply per-group walking speeds (working_age 1.40 m/s, elderly 0.90 m/s, children 1.00 m/s) to compute journey time and time in green per group. Output: two metrics per stop — average green walking time (Health Score mode) and % of paths through green (Catchment mode).
+~~7. **Green Paths pipeline**~~ ✅ DONE — Four new columns on all 1,699 bus-route segments: `green_pct_catchment` (fraction of decay-weighted reachable network through parks; mean 13.9%, max 61.5%), `green_time_working_age / _elderly / _children` (green_pct × max_walk_minutes per group; mean ~1.4 / 1.1 / 1.0 min). Green fraction per edge computed as proportional intersection of primal edge with park polygon union. One CitySeer `compute_stats` pass (catchment decay). Parks overlay layer also enabled: `data/web/norrebro_parks.geojson` (77 features), wired to `toggle-parks` checkbox in the interactive panel. Segment hover popup now shows green metric in the active mode.
 
 8. **Right panel MVP redesign** — consolidates the population section and Green Paths into one pane. Ships after point 7 pipeline is complete. Layout (top to bottom):
    - **Row 0:** Mode toggle (Health · Catchment) + Neighbourhood selector — drives everything below and the map
