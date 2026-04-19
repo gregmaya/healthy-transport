@@ -252,7 +252,56 @@ const _GROUP_LABEL = {
   elderly: "Elderly",     children: "Children",
 };
 
+const SEG_LAYERS = ["segments-aggregate", "segments-working_age", "segments-elderly", "segments-children"];
+
 function _addPopups() {
+  // ── Segment hover/click popup ──────────────────────────────────────────────
+  const _segPopup = new maplibregl.Popup({ maxWidth: "220px", closeButton: false, closeOnClick: false });
+
+  SEG_LAYERS.forEach(layerId => {
+    map.on("mouseenter", layerId, (e) => {
+      map.getCanvas().style.cursor = "pointer";
+      const p = e.features[0].properties;
+      const dec = (v) => (v != null && !isNaN(+v) ? (+v).toFixed(3) : "—");
+
+      const isBaseline = _activeMode === "baseline";
+      const activeField = isBaseline
+        ? "score_catchment"
+        : (STOP_SCORE_FIELD[_activeGroup] || STOP_SCORE_FIELD.aggregate);
+      const rawScore = +(p[activeField]) || 0;
+      const normScore = (_rampLo !== null && _rampHi !== _rampLo)
+        ? Math.max(0, Math.min(1, (rawScore - _rampLo) / (_rampHi - _rampLo)))
+        : rawScore;
+      const band = _getBand(normScore);
+      const modeName = isBaseline ? "Catchment Score" : "Health Score";
+
+      const groupRows = isBaseline ? "" : `
+        <hr class="popup-hr">
+        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_health_working_age)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_health_elderly)}</span></div>
+        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_health_children)}</span></div>`;
+
+      _segPopup
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <div style="font-size:0.78em;color:#666;margin-bottom:4px">Bus-route segment</div>
+          <div class="popup-score-row"><span>${modeName}</span><span>${dec(rawScore)}</span></div>
+          <div class="popup-category" style="color:${band.color}">${band.label}</div>
+          ${groupRows}
+        `)
+        .addTo(map);
+    });
+
+    map.on("mousemove", layerId, (e) => {
+      _segPopup.setLngLat(e.lngLat);
+    });
+
+    map.on("mouseleave", layerId, () => {
+      map.getCanvas().style.cursor = "";
+      _segPopup.remove();
+    });
+  });
+
   // Tooltips only on bus stops — not on segment/route layers
   map.on("click", "stops-layer", (e) => {
     const p = e.features[0].properties;

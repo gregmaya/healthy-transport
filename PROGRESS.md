@@ -36,7 +36,7 @@ Ordered working list. Delete items when done.
 
 ~~4. **Score mode naming unification**~~ ✅ DONE — Renamed Baseline → Catchment Score and Contextual → Health Score across all buttons, titles, chart axes, info panels, tooltips, and narrative text in index.html, map.js, scatter.js, scroll.js, and config.js. Internal `data-mode` values and JS variable names unchanged.
 
-5. **Segment hover/click popup** — add interactivity to scored segment lines on the map: on hover/click, show the active score value and group breakdown for that segment. Differs from stop tooltip — no route or stop name; segment-level scores only; must adapt to the active score mode.
+~~5. **Segment hover/click popup**~~ ✅ DONE — Hover over any scored segment shows a floating popup with the active score, band category, and group breakdown (Working-age / Elderly / Children) in Health Score mode. Popup tracks mouse position. Uses same popup CSS classes as the stop tooltip. Implemented in `_addPopups()` in map.js, attached to all four segment layers.
 
 6. **Scroll transition stubs** — implement `showCatchmentRing` and `showBenefitCurves` (currently stubs); `showScoredNetwork` and `showGapAnalysis` already use `fitBounds(NORREBRO_BOUNDS)`.
 

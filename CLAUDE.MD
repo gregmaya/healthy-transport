@@ -266,13 +266,10 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Validate Phase B in QGIS** — confirm buffer-zone entrances have non-null population columns; confirm boundary-adjacent bus-stop scores are higher than pre-Phase-B run.
-2. **Correlation check** — Pearson r(`score_catchment`, `score_health_combined`) on 552 stops should be lower than old ~0.8 value.
-3. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
-4. **Segment hover/click popup** — show score on hover in interactive mode.
-5. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
-6. **Wire neighbourhood dropdown to map** — `#neighbourhood-select` updates population bars (done); needs `map.fitBounds()` + polygon highlight when demographics overlay is on.
-7. **Replace population dummy data** — demographic bars use hardcoded estimates; replace with real age-group percentages from `norrebro_neighbourhoods_population.csv` once frontend data pipeline is extended.
+1. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
+2. **Green Paths pipeline** — for each bus-route segment: compute green path length within `norrebro_greenspaces.gpkg`; derive per-group green walking time and % paths through green. See PROGRESS.md Task 7 for full spec.
+3. **Right panel MVP redesign** — consolidate population + Green Paths into one pane (PROGRESS.md Task 8); blocked on Green Paths pipeline.
+4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
 
 ---
 
