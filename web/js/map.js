@@ -271,7 +271,7 @@ function _addPopups() {
       ? Math.max(0, Math.min(1, (rawScore - _rampLo) / (_rampHi - _rampLo)))
       : rawScore;
     const band = _getBand(normScore);
-    const modeName = _activeMode === "baseline" ? "Baseline" : "Contextual";
+    const modeName = _activeMode === "baseline" ? "Catchment Score" : "Health Score";
 
     new maplibregl.Popup({ maxWidth: "250px" })
       .setLngLat(e.lngLat)

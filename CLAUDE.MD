@@ -1,6 +1,6 @@
 # Nørrebro Healthy Transport — AI Instructions
 
-Multi-outcome urban health analysis for Nørrebro, Copenhagen. Four parallel analysis tracks — **Bus Stops**, **Rail**, **Cycling**, **Green Spaces** — each with a scrollytelling narrative sharing one persistent MapLibre map. All tracks expose a two-mode scoring toggle: **Baseline** (pure network geometry, working-age B(d) curve, equal node weight, no population weighting) vs **Contextual** (demographic-weighted by actual residents, with low/mid/high uncertainty bands).
+Multi-outcome urban health analysis for Nørrebro, Copenhagen. Four parallel analysis tracks — **Bus Stops**, **Rail**, **Cycling**, **Green Spaces** — each with a scrollytelling narrative sharing one persistent MapLibre map. All tracks expose a two-mode scoring toggle: **Catchment Score** (pure network geometry, working-age B(d) curve, equal node weight, no population weighting) vs **Health Score** (demographic-weighted by actual residents, with low/mid/high uncertainty bands).
 
 ## Role
 
@@ -30,15 +30,15 @@ These constraints are non-negotiable and must be respected in all pipeline and f
 
 6. **Network distance, not Euclidean** — all distance calculations use graph shortest-path distance through the pedestrian network. Crow-flies distance is never used for scoring.
 
-7. **Two scoring modes — Baseline and Contextual** — Baseline uses the working-age B(d) curve with equal weight per network node (no population count; represents geometric quality of a location). Contextual uses B(d) × age-disaggregated population from `entrances_demographics` with three scenarios (low/mid/high). Both modes are available on all tracks. The toggle is in every interactive panel. The Contextual uncertainty band must be displayed: a scenario rail `[ Low · Mid · High ]` and a popup showing the score range.
+7. **Two scoring modes — Catchment Score and Health Score** — Catchment Score uses the working-age B(d) curve with equal weight per network node (no population count; represents geometric quality of a location). Health Score uses B(d) × age-disaggregated population from `entrances_demographics` with three scenarios (low/mid/high). Both modes are available on all tracks. The toggle is in every interactive panel. The Health Score uncertainty band must be displayed: a scenario rail `[ Low · Mid · High ]` and a popup showing the score range.
 
-8. **Rail tab scores existing entrances only** — no candidate segment analysis along rail routes (unlike bus). Origin = actual entrance location per existing stop. Output: one scored point per entrance. Both Baseline and Contextual modes apply.
+8. **Rail tab scores existing entrances only** — no candidate segment analysis along rail routes (unlike bus). Origin = actual entrance location per existing stop. Output: one scored point per entrance. Both Catchment Score and Health Score modes apply.
 
 9. **Cycling tab is a placeholder** — methodology TBD. Tab structure exists in the UI; no scoring pipeline is defined yet.
 
-10. **Green Spaces scores are on 20m network segments** — consistent with the bus output layer. For each segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (Baseline + Contextual).
+10. **Green Spaces scores are on 20m network segments** — consistent with the bus output layer. For each segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (Catchment Score + Health Score).
 
-11. **Interactive tool defaults** — on entering the interactive panel, the interior filter is applied silently (only well-covered segments shown; no toggle exposed to the user). The "Bus stops" overlay is ON by default. The score mode defaults to Baseline. Overlays for Parks, Demographics (neighbourhood), and Demographics (buildings) are present as disabled placeholders.
+11. **Interactive tool defaults** — on entering the interactive panel, the interior filter is applied silently (only well-covered segments shown; no toggle exposed to the user). The "Bus stops" overlay is ON by default. The score mode defaults to Catchment Score. Overlays for Parks, Demographics (neighbourhood), and Demographics (buildings) are present as disabled placeholders.
 
 ---
 
@@ -100,7 +100,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | `norrebro_demographics.geojson` | 10,175 entrance points for demographics heatmap; includes low/high/unc_pct columns (WGS84, 7.7 MB) | ✅ exists |
 | `norrebro_neighbourhoods.geojson` | 5 sub-neighbourhood polygons (WGS84, 33 KB) — exported but not used in frontend | ✅ exists |
 | `norrebro_bus_segments_scored.gpkg` | Same segments as GeoJSON, GeoPackage format for QGIS | Not yet — pending edge-artifact decision |
-| `norrebro_rail_stops_scored.geojson` | One scored point per metro/train entrance (Baseline + Contextual) | Not yet — blocked on data source |
+| `norrebro_rail_stops_scored.geojson` | One scored point per metro/train entrance (Catchment Score + Health Score) | Not yet — blocked on data source |
 | `norrebro_greenspace_access.geojson` | 20m segments scored by network distance to parks/playgrounds | Not yet |
 
 **Score column naming convention** (all scored layers, as of `scripts/score/score_bus_routes.py`):

@@ -215,7 +215,7 @@ function drawScatter(group) {
   svg.appendChild(el("text", {
     x: ML + PW / 2, y: H - 2,
     "font-size": 9, fill: "#555", "text-anchor": "middle",
-  }, "Baseline (network coverage)"));
+  }, "Catchment Score (network coverage)"));
   svg.appendChild(el("text", {
     x: 8, y: MT + PH / 2,
     "font-size": 9, fill: "#555", "text-anchor": "middle",
@@ -238,7 +238,7 @@ function drawScatter(group) {
     });
     circle.style.cursor = "pointer";
     const title = document.createElementNS(NS, "title");
-    title.textContent = `Baseline: ${fmt(xVals[i])}  ${yLabel}: ${fmt(yVals[i])}`;
+    title.textContent = `Catchment Score: ${fmt(xVals[i])}  ${yLabel}: ${fmt(yVals[i])}`;
     circle.appendChild(title);
     circle.addEventListener("click", (e) => {
       e.stopPropagation();

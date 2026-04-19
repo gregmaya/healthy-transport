@@ -51,13 +51,13 @@
           <button class="btn-icon" data-info="score" aria-label="About score modes">ⓘ</button>
         </div>
         <div class="info-popup hidden" id="info-popup-score">
-          <p><strong>Contextual</strong> — weights each street by the actual age mix of nearby residents. Elderly, children, and working-age adults each have different optimal walk distances. Reveals where a stop benefits the most people given today's population.</p>
-          <p><strong>Baseline</strong> — scores streets on network reach alone: how many address points fall within walking distance, every resident counted equally. Useful for identifying locations with broad physical reach, independent of today's demographics.</p>
+          <p><strong>Health Score</strong> — weights each street by the actual age mix of nearby residents. Elderly, children, and working-age adults each have different optimal walk distances. Reveals where a stop benefits the most people given today's population.</p>
+          <p><strong>Catchment Score</strong> — scores streets on network reach alone: how many address points fall within walking distance, every resident counted equally. Useful for identifying locations with broad physical reach, independent of today's demographics.</p>
         </div>
 
         <div class="mode-toggle">
-          <button class="mode-btn active" data-mode="contextual">Contextual</button>
-          <button class="mode-btn" data-mode="baseline">Baseline</button>
+          <button class="mode-btn active" data-mode="contextual">Health Score</button>
+          <button class="mode-btn" data-mode="baseline">Catchment Score</button>
         </div>
         <p class="mode-active-desc" id="mode-desc-contextual">Weighted by who lives nearby — age-disaggregated, modelled estimates.</p>
         <p class="mode-active-desc hidden" id="mode-desc-baseline">Infrastructure potential — shortest paths to all address points, equal weight per resident.</p>
@@ -158,7 +158,7 @@
   <div id="chart-panel" class="hidden">
 
     <div class="chart-panel-header">
-      <span id="chart-mode-label">Contextual mode</span>
+      <span id="chart-mode-label">Health Score</span>
     </div>
 
     <!-- Distribution card -->
@@ -170,19 +170,19 @@
       <p class="chart-subtitle">What share of stops are optimally placed?</p>
       <div class="info-popup hidden" id="info-popup-distribution">
         <p>Each bar shows the share of bus stops in a performance band. Bands are defined by a normalised health-benefit score (0–1). Higher = more benefit generated for walking residents.</p>
-        <p>In <strong>Contextual mode</strong> the score is weighted by the age distribution of nearby residents. In <strong>Baseline mode</strong> it reflects geometric network reach only.</p>
+        <p>In <strong>Health Score</strong> mode the score is weighted by the age distribution of nearby residents. In <strong>Catchment Score</strong> mode it reflects geometric network reach only.</p>
       </div>
       <div id="distribution-container"></div>
     </div>
 
-    <!-- Baseline vs contextual scatter plot -->
+    <!-- Catchment Score vs Health Score scatter plot -->
     <div class="chart-block">
       <div class="chart-block-header">
-        Baseline vs Contextual
+        Catchment Score vs Health Score
         <button class="btn-icon" data-info="scatter" aria-label="About this chart">ⓘ</button>
       </div>
       <div class="info-popup hidden" id="info-popup-scatter">
-        <p>Each point is one bus stop. The X-axis shows its geometric network score (Baseline); the Y-axis shows its population-weighted score (Contextual). Stops above the dashed diagonal generate more health benefit than their geometry alone predicts — stops below generate less.</p>
+        <p>Each point is one bus stop. The X-axis shows its Catchment Score (geometric network reach); the Y-axis shows its Health Score (population-weighted). Stops above the dashed diagonal generate more health benefit than their geometry alone predicts — stops below generate less.</p>
         <p><strong>Note:</strong> only residents registered within Nørrebro are counted. Surrounding populations who use these stops are not reflected in the scores.</p>
       </div>
       <p class="chart-subtitle">Does network coverage translate to health benefit for local residents?</p>

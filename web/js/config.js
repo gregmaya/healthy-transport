@@ -58,9 +58,9 @@ export const GROUP_RAMPS = {
   aggregate:   SCORE_RAMP,
 };
 
-// Score mode descriptions shown below the Baseline / Contextual toggle
+// Score mode descriptions shown below the Catchment Score / Health Score toggle
 export const SCORE_MODE_DESCRIPTIONS = {
-  baseline:   "Network quality only — no population weighting. Uses working-age walk curve with equal weight per network node.",
+  baseline:   "Network reach only — no population weighting. Uses working-age walk curve with equal weight per network node.",
   contextual: "Weighted by who lives nearby. Scores reflect actual age-disaggregated population (modelled estimates).",
 };
 
@@ -219,7 +219,7 @@ export const STEPS_BUS = [
     id: "gaps",
     tag: "The Analysis",
     title: "What the scores reveal — and what they don't",
-    body: "High-scoring segments with no current stop are the most actionable opportunities. But a low score doesn't mean a misplaced stop: a bus stop near a university or a hospital serves a high-demand location with few nearby residents. High network reach, low residential density. <strong>That's exactly why comparing the Baseline score (catchment areas) against the Health score (with actual population distribution) is the core analytical move.</strong>",
+    body: "High-scoring segments with no current stop are the most actionable opportunities. But a low score doesn't mean a misplaced stop: a bus stop near a university or a hospital serves a high-demand location with few nearby residents. High network reach, low residential density. <strong>That's exactly why comparing the Catchment Score (network reach) against the Health Score (with actual population distribution) is the core analytical move.</strong>",
     mapFn: "showGapAnalysis",
     // COUPLING NOTE: this SVG is a static snapshot of the Catchment vs Health scatter
     // rendered in the interactive tool (scatter.js). Data source: norrebro_stops.geojson,
@@ -323,7 +323,7 @@ export const STEPS_BUS = [
   <circle cx="145.5" cy="77.1" r="2.2" fill="#b6babe" fill-opacity="0.8"/>
   <!-- X axis -->
   <line x1="0" y1="160" x2="200" y2="160" stroke="#888" stroke-width="0.8"/>
-  <text x="100" y="176" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">Baseline (catchment reach)</text>
+  <text x="100" y="176" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle">Catchment Score</text>
   <!-- Y axis -->
   <line x1="0" y1="0" x2="0" y2="160" stroke="#888" stroke-width="0.8"/>
   <text x="-8" y="80" font-size="7" fill="#555" font-family="sans-serif" text-anchor="middle" transform="rotate(-90,-8,80)">Health score (combined)</text>
@@ -366,7 +366,7 @@ export const STEPS_RAIL = [
   {
     id: "rail-explore",
     title: "Explore rail coverage",
-    body: "Compare Baseline (network geometry) and Contextual (actual residents) scores to see where rail provision aligns with — or diverges from — population need.",
+    body: "Compare Catchment Score (network geometry) and Health Score (actual residents) to see where rail provision aligns with — or diverges from — population need.",
     mapFn: "showRailPlaceholder",
   },
 ];

@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-19 (OSM Frederiksberg swap + narrative SVG refresh)*
+*Last updated: 2026-04-19 (OSM Frederiksberg swap + narrative SVG refresh + score mode rename)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -34,7 +34,7 @@ Ordered working list. Delete items when done.
 
 ### Active UI tasks
 
-4. **Score mode naming unification** — rename Baseline → Catchment Score and Contextual → Health Score consistently across all buttons, titles, chart axes, info panels, and tooltips throughout the web app.
+~~4. **Score mode naming unification**~~ ✅ DONE — Renamed Baseline → Catchment Score and Contextual → Health Score across all buttons, titles, chart axes, info panels, tooltips, and narrative text in index.html, map.js, scatter.js, scroll.js, and config.js. Internal `data-mode` values and JS variable names unchanged.
 
 5. **Segment hover/click popup** — add interactivity to scored segment lines on the map: on hover/click, show the active score value and group breakdown for that segment. Differs from stop tooltip — no route or stop name; segment-level scores only; must adapt to the active score mode.
 

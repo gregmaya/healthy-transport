@@ -255,7 +255,7 @@ export function initToolPanel() {
       setScoreMode(mode);
       // Update chart panel header label
       const modeLabel = document.getElementById("chart-mode-label");
-      if (modeLabel) modeLabel.textContent = mode === "baseline" ? "Baseline mode" : "Contextual mode";
+      if (modeLabel) modeLabel.textContent = mode === "baseline" ? "Catchment Score" : "Health Score";
       // Redraw distribution for the new mode
       updateScatterMode();
     });
