@@ -266,7 +266,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Implement remaining scroll transition functions** — `showCatchmentRing` and `showBenefitCurves` are still stubs; `showScoredNetwork` and `showGapAnalysis` now use `fitBounds(NORREBRO_BOUNDS)`.
+1. **Green Paths pipeline** — for each bus-route segment: compute green path length within `norrebro_greenspaces.gpkg`; derive per-group green walking time and % paths through green. See PROGRESS.md Task 7 for full spec.
 2. **Green Paths pipeline** — for each bus-route segment: compute green path length within `norrebro_greenspaces.gpkg`; derive per-group green walking time and % paths through green. See PROGRESS.md Task 7 for full spec.
 3. **Right panel MVP redesign** — consolidate population + Green Paths into one pane (PROGRESS.md Task 8); blocked on Green Paths pipeline.
 4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.

@@ -38,7 +38,7 @@ Ordered working list. Delete items when done.
 
 ~~5. **Segment hover/click popup**~~ ✅ DONE — Hover over any scored segment shows a floating popup with the active score, band category, and group breakdown (Working-age / Elderly / Children) in Health Score mode. Popup tracks mouse position. Uses same popup CSS classes as the stop tooltip. Implemented in `_addPopups()` in map.js, attached to all four segment layers.
 
-6. **Scroll transition stubs** — implement `showCatchmentRing` and `showBenefitCurves` (currently stubs); `showScoredNetwork` and `showGapAnalysis` already use `fitBounds(NORREBRO_BOUNDS)`.
+~~6. **Scroll transition stubs**~~ ✅ DONE — `showCatchmentRing` and `showBenefitCurves` now set NORREBRO_BOUNDS + footprints visible as background state, so when step 4 reveals the scored network there is no jump. Overlays (image panel / fullscreen SVG) still cover the map during these steps.
 
 ### MVP completeness block *(ship together)*
 

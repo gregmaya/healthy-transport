@@ -353,10 +353,29 @@ function _addAttribution() {
 
 // ── Scroll-step transition functions ────────────────────────────────────────
 
-// Steps 1–3 are fully covered by image/SVG overlays — no map navigation needed.
-export function showOverview()      { /* map hidden behind image panel */ }
-export function showCatchmentRing() { /* map hidden behind image panel */ }
-export function showBenefitCurves() { /* map hidden behind fullscreen SVG overlay */ }
+// Steps 1–3 are covered by image/SVG overlays.
+// The map functions still prep the correct layer state so step 4 (showScoredNetwork)
+// can reveal the scored network without a visible jump.
+export function showOverview() { /* map hidden behind image panel — no action needed */ }
+
+export function showCatchmentRing() {
+  // Step 2: image overlay is shown; set district view + footprints as background.
+  _setVisibility("footprints-layer", "visible");
+  _setVisibility("segments-aggregate", "none");
+  _setVisibility("bus-routes-context", "none");
+  _setVisibility("stops-layer", "none");
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 50, duration: 0 });
+}
+
+export function showBenefitCurves() {
+  // Step 3: fullscreen SVG overlay is shown; keep district view so the transition
+  // into showScoredNetwork (step 4) is seamless when the overlay clears.
+  _setVisibility("footprints-layer", "visible");
+  _setVisibility("segments-aggregate", "none");
+  _setVisibility("bus-routes-context", "none");
+  _setVisibility("stops-layer", "none");
+  map.fitBounds(NORREBRO_BOUNDS, { padding: 50, duration: 0 });
+}
 
 // Steps 4–5 share one locked view: district bounding box with buffer, instant (duration 0).
 export function showScoredNetwork() {
