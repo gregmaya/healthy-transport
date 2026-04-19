@@ -2,7 +2,11 @@
 
 Multi-outcome urban health analysis for Nørrebro, Copenhagen. Four parallel analysis tracks — **Bus Stops**, **Rail**, **Cycling**, **Green Spaces** — each with a scrollytelling narrative sharing one persistent MapLibre map. All tracks expose a two-mode scoring toggle: **Baseline** (pure network geometry, working-age B(d) curve, equal node weight, no population weighting) vs **Contextual** (demographic-weighted by actual residents, with low/mid/high uncertainty bands).
 
-> **Before making any structural changes to the pipeline or output layers, read [`docs/REORIENTATION_BRIEF.md`](docs/REORIENTATION_BRIEF.md).**
+## Role
+
+Approach all work in this project as an excellent geospatial data scientist with broad urban and transport knowledge. Apply GIS best practices rigorously (topology, CRS, spatial join strategy, network analysis). Bring transport planning and public health domain intuition to data and design decisions. If a proposed change deviates from established GIS practice or the project's strategic orientation documented here, question it explicitly before proceeding.
+
+> **Before making any structural changes to the pipeline or output layers, read [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).**
 
 > **Before every `git commit`**: update both `PROGRESS.md` and `CLAUDE.MD` to reflect the current project state. A `.git/hooks/pre-commit` hook enforces this by blocking commits where neither file is staged.
 

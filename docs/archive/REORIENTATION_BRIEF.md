@@ -56,7 +56,6 @@ The health benefit is modelled as a smooth, tuneable function **B(d)** where `d`
 | Working-age adults (18–64) | 400–700m | ~1,200m | Widest, furthest-peaking curve. Highest cardiovascular benefit per trip. |
 | Elderly residents (65+) | 200–400m | ~700m | Curve shifts left. Relative benefit per metre walked is higher but deterrence rises sharply beyond 500m. |
 | Children (under 15) | 150–350m | ~600m | Route safety quality dominates. Benefit is also habit-formation, not just immediate health outcome. |
-| Reduced mobility | 0–200m | ~350m | Very narrow range. Most transit-dependent group; hardest to serve well. |
 
 ### 2.2 Curve Shape
 
@@ -67,12 +66,16 @@ Each curve is implemented as a **modified Gaussian or beta distribution** with t
 - **Decay** (peak to zero threshold): benefit falls as deterrence rises and self-selection dominates
 - **Zero** beyond the threshold: the address is effectively outside the catchment
 
-Three parameters should be exposed as **interactive sliders** in the tool:
-- Peak distance
-- Decay steepness
-- Zero-benefit threshold
 
-This lets planners test sensitivity and adapt the model to local context.
+> **Postponed to future phases** (added to [WISHLIST.md](./WISHLIST.md))
+>
+> Three parameters should be exposed as **interactive sliders** in the tool:
+>- Peak distance
+>- Decay steepness
+>- Zero-benefit threshold
+>
+>This lets planners test sensitivity and adapt the model to local context.
+
 
 ### 2.3 Data Requirements
 
