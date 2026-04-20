@@ -432,3 +432,22 @@ export const TABS = [
   { id: "cycling", label: "Cycling",      steps: STEPS_CYCLING, ready: false },
   { id: "green",   label: "Green Spaces", steps: STEPS_GREEN,   ready: false },
 ];
+
+// Age breakdown per neighbourhood — keyed by neighbourhood_name from norrebro_neighbourhoods.geojson.
+// Source: norrebro_neighbourhoods_population.csv, 2025Q4.
+// Groups: children=0–14, working_age=15–64, elderly=65+.
+export const NEIGHBOURHOOD_POP = {
+  "Blagardskvarteret":    { children: 2104,  working_age: 11093, elderly: 1481,  total: 14678 },
+  "Guldbergskvarteret":   { children: 2484,  working_age: 15230, elderly: 2047,  total: 19761 },
+  "Stefansgade":          { children: 2562,  working_age: 13873, elderly: 1319,  total: 17754 },
+  "Mimersgade-kvarteret": { children: 2060,  working_age: 14256, elderly: 1056,  total: 17372 },
+  "Haraldsgade-kvarteret":{ children: 1282,  working_age: 8128,  elderly: 778,   total: 10188 },
+};
+
+// District totals (sum of above) — used for population bar percentages.
+export const DISTRICT_POP = {
+  children:    10492,
+  working_age: 62580,
+  elderly:      6681,
+  total:       79753,
+};

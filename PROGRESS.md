@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-19 (Green Paths pipeline + Parks overlay layer)*
+*Last updated: 2026-04-20 (Task 1: Add NEIGHBOURHOOD_POP and DISTRICT_POP constants)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -44,7 +44,11 @@ Ordered working list. Delete items when done.
 
 ~~7. **Green Paths pipeline**~~ ✅ DONE — Four new columns on all 1,699 bus-route segments: `green_pct_catchment` (fraction of decay-weighted reachable network through parks; mean 13.9%, max 61.5%), `green_time_working_age / _elderly / _children` (green_pct × max_walk_minutes per group; mean ~1.4 / 1.1 / 1.0 min). Green fraction per edge computed as proportional intersection of primal edge with park polygon union. One CitySeer `compute_stats` pass (catchment decay). Parks overlay layer also enabled: `data/web/norrebro_parks.geojson` (77 features), wired to `toggle-parks` checkbox in the interactive panel. Segment hover popup now shows green metric in the active mode.
 
-8. **Right panel MVP redesign** — consolidates the population section and Green Paths into one pane. Ships after point 7 pipeline is complete. Layout (top to bottom):
+~~8. **Add NEIGHBOURHOOD_POP and DISTRICT_POP constants**~~ ✅ DONE — Task 1 of UI redesign. Added two JS export constants to `web/js/config.js` with age-group population breakdowns per neighbourhood and district totals, keyed by neighbourhood_name for use in the right panel redesign. Source: `norrebro_neighbourhoods_population.csv`.
+
+### Active UI tasks (continued)
+
+1. **Right panel MVP redesign** — consolidates the population section and Green Paths into one pane. Ships after task 7 pipeline is complete. Layout (top to bottom):
    - **Row 0:** Mode toggle (Health · Catchment) + Neighbourhood selector — drives everything below and the map
    - **Score distribution card** — unchanged
    - **Scatter plot** — unchanged
@@ -53,7 +57,7 @@ Ordered working list. Delete items when done.
      - On stop selection: second KPI row appears showing catchment population + green metric for that stop
      - Population bars (Children / Working-age / Elderly) each paired with their group's share of green walking time (computed per group walking speed)
 
-9. **Neighbourhood highlighter** — built after 7 + 8. The neighbourhood selector (row 0) acts as a district-wide comparator, not a filter: highlights neighbourhood boundary + its stops on the map; shows neighbourhood band within district-wide distribution card; dims non-neighbourhood stops in scatter; updates People + Green KPIs to reflect the neighbourhood. Can be deferred if implementation complexity is high.
+2. **Neighbourhood highlighter** — built after task 9. The neighbourhood selector (row 0) acts as a district-wide comparator, not a filter: highlights neighbourhood boundary + its stops on the map; shows neighbourhood band within district-wide distribution card; dims non-neighbourhood stops in scatter; updates People + Green KPIs to reflect the neighbourhood. Can be deferred if implementation complexity is high.
 
 ---
 

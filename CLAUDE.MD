@@ -268,10 +268,10 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Green Paths pipeline** — for each bus-route segment: compute green path length within `norrebro_greenspaces.gpkg`; derive per-group green walking time and % paths through green. See PROGRESS.md Task 7 for full spec.
-2. **Green Paths pipeline** — for each bus-route segment: compute green path length within `norrebro_greenspaces.gpkg`; derive per-group green walking time and % paths through green. See PROGRESS.md Task 7 for full spec.
-3. **Right panel MVP redesign** — consolidate population + Green Paths into one pane (PROGRESS.md Task 8); blocked on Green Paths pipeline.
-4. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids.
+1. **Right panel MVP redesign** — consolidate population + Green Paths into one pane (PROGRESS.md Task 9). Layout includes neighbourhood selector, score distribution, scatter plot, and People + Green KPI section with population bars. NEIGHBOURHOOD_POP and DISTRICT_POP constants now in `web/js/config.js` for use in this task.
+2. **Neighbourhood highlighter** — built after task 1 above. The neighbourhood selector acts as a district-wide comparator, not a filter: highlights neighbourhood boundary + its stops on the map; shows neighbourhood band within district-wide distribution card; dims non-neighbourhood stops in scatter; updates People + Green KPIs.
+3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b).
+4. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).
 
 ---
 
