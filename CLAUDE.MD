@@ -268,7 +268,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **scroll.js People+Green wiring** (Task 8) — JS logic for the merged People+Green section with neighbourhood comparator. Right panel HTML/CSS restructure (Task 6) and scatter neighbourhood dimming (Task 7) are done.
+1. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b). Tasks 8+9 of the right-panel redesign are complete.
 2. **Neighbourhood highlighter** — `neighbourhood-boundary` MapLibre layer, `setNeighbourhoodBoundary(name)`, `getNeighbourhoodFeatures()`, and `neighbourhoodForPoint(lngLat)` are implemented in `map.js`. Wiring to the neighbourhood selector UI is Task 8.
 3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b).
 4. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).

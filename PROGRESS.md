@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-20 (Task 7: scatter.js neighbourhood dimming + distribution accent tick)*
+*Last updated: 2026-04-20 (Task 8: _updatePeopleGreen, stop selection, neighbourhood selector wiring)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).

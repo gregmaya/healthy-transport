@@ -1,6 +1,6 @@
-import { TABS } from "./config.js";
-import { enableScrollLock, disableScrollLock } from "./state.js";
-import { initScatter, updateScatterGroup, updateScatterMode, setScatterSelectCallback, highlightScatterStop } from "./scatter.js";
+import { TABS, NEIGHBOURHOOD_POP, DISTRICT_POP } from "./config.js";
+import { enableScrollLock, disableScrollLock, getActiveNeighbourhood, setActiveNeighbourhood, getSelectedStop, setSelectedStop } from "./state.js";
+import { initScatter, updateScatterGroup, updateScatterMode, setScatterSelectCallback, highlightScatterStop, updateNeighbourhoodFilter } from "./scatter.js";
 import {
   showOverview,
   showCatchmentRing,
@@ -19,6 +19,9 @@ import {
   setStopSelectCallback,
   highlightMapStop,
   resizeMap,
+  setNeighbourhoodBoundary,
+  getNeighbourhoodFeatures,
+  neighbourhoodForPoint,
   showRailPlaceholder,
   showCyclingPlaceholder,
   showGreenPlaceholder,
@@ -280,52 +283,138 @@ export function initToolPanel() {
       const mode = btn.dataset.mode;
       setScoreMode(mode);
       updateScatterMode();
-      // _updatePeopleGreen wired in Task 8
+      _updatePeopleGreen(getStopFeatures(), getSelectedStop(), getActiveNeighbourhood());
     });
   });
 
-  // Green Path Access block — populate from stop features
-  function _updateGreenBlock(stopFeatures, selectedStopId) {
-    const pctEl   = document.getElementById("kpi-green-pct");
-    const noteEl  = document.getElementById("green-context-note");
-    const waEl    = document.getElementById("green-time-working-age");
-    const elEl    = document.getElementById("green-time-elderly");
-    const chEl    = document.getElementById("green-time-children");
-    if (!pctEl) return;
+  function _updatePeopleGreen(stopFeatures, selectedStopId, nbName) {
+    if (!stopFeatures) return;
+    const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
+    const internal = stopFeatures.filter(f => !f.properties.context);
 
-    if (selectedStopId && stopFeatures) {
-      const f = stopFeatures.find(f => f.properties.stop_id === selectedStopId && !f.properties.context);
-      if (f) {
-        const p = f.properties;
-        pctEl.textContent  = p.green_pct_catchment != null ? `${(+p.green_pct_catchment * 100).toFixed(0)}%` : "—";
-        if (waEl) waEl.textContent = p.green_time_working_age != null ? `${(+p.green_time_working_age).toFixed(1)} min` : "—";
-        if (elEl) elEl.textContent = p.green_time_elderly     != null ? `${(+p.green_time_elderly).toFixed(1)} min`     : "—";
-        if (chEl) chEl.textContent = p.green_time_children    != null ? `${(+p.green_time_children).toFixed(1)} min`    : "—";
-        if (noteEl) noteEl.textContent = `Selected stop · ${p.stop_name || p.stop_id}`;
-        return;
+    const sum = (col) => internal.reduce((s, f) => s + (+f.properties[col] || 0), 0);
+    const avg = (col) => internal.length ? sum(col) / internal.length : 0;
+    const fmtK = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
+
+    // District headline KPIs
+    const popLow  = Math.round(sum("pop_wa_reach_low")  + sum("pop_el_reach_low")  + sum("pop_ch_reach_low"))  / (internal.length || 1);
+    const popHigh = Math.round(sum("pop_wa_reach_high") + sum("pop_el_reach_high") + sum("pop_ch_reach_high")) / (internal.length || 1);
+    const popRangeEl = document.getElementById("kpi-pop-range");
+    if (popRangeEl) popRangeEl.textContent = `${fmtK(popLow)}–${fmtK(popHigh)}`;
+
+    const greenDistEl  = document.getElementById("kpi-green-district");
+    const greenLabelEl = document.getElementById("kpi-green-district-label");
+    if (greenDistEl) {
+      if (isBaseline) {
+        greenDistEl.textContent = `${(avg("green_pct_catchment") * 100).toFixed(0)}%`;
+        if (greenLabelEl) greenLabelEl.textContent = "routes through parks";
+      } else {
+        greenDistEl.textContent = `${avg("green_time_working_age").toFixed(1)} min`;
+        if (greenLabelEl) greenLabelEl.textContent = "avg min in green (WA)";
       }
     }
 
-    // District average across internal stops
-    if (!stopFeatures) return;
-    const internal = stopFeatures.filter(f => !f.properties.context);
-    if (!internal.length) return;
-    const avg = (col) => internal.reduce((s, f) => s + (+f.properties[col] || 0), 0) / internal.length;
-    pctEl.textContent  = `${(avg("green_pct_catchment") * 100).toFixed(0)}%`;
-    if (waEl) waEl.textContent = `${avg("green_time_working_age").toFixed(1)} min`;
-    if (elEl) elEl.textContent = `${avg("green_time_elderly").toFixed(1)} min`;
-    if (chEl) chEl.textContent = `${avg("green_time_children").toFixed(1)} min`;
-    if (noteEl) noteEl.textContent = `District average · ${internal.length} scored stops`;
+    // Per-group bars
+    const tot = DISTRICT_POP.total;
+    for (const [suffix, field, waField, color] of [
+      ["children",    "children",    "green_time_children",    "#c6dbef"],
+      ["working-age", "working_age", "green_time_working_age", "#2171b5"],
+      ["elderly",     "elderly",     "green_time_elderly",     "#6baed6"],
+    ]) {
+      const share = Math.round((DISTRICT_POP[field] / tot) * 100);
+      const fillEl  = document.getElementById(`bar-${suffix}`);
+      const pctEl   = document.getElementById(`pct-${suffix}`);
+      const greenEl = document.getElementById(`green-ann-${suffix}`);
+      if (fillEl)  { fillEl.style.width = `${share}%`; fillEl.style.background = color; }
+      if (pctEl)   pctEl.textContent = `${share}%`;
+      if (greenEl) {
+        greenEl.textContent = isBaseline
+          ? `${(avg("green_pct_catchment") * 100).toFixed(0)}%`
+          : `${avg(waField).toFixed(1)}m`;
+      }
+    }
+
+    // Stop KPI row
+    const stopRowEl = document.getElementById("kpi-stop-row");
+    if (stopRowEl) {
+      if (selectedStopId) {
+        const feat = internal.find(f => f.properties.stop_id === selectedStopId);
+        if (feat) {
+          const p = feat.properties;
+          const sPopLow  = (+p.pop_wa_reach_low  || 0) + (+p.pop_el_reach_low  || 0) + (+p.pop_ch_reach_low  || 0);
+          const sPopHigh = (+p.pop_wa_reach_high || 0) + (+p.pop_el_reach_high || 0) + (+p.pop_ch_reach_high || 0);
+          const stopNameEl  = document.getElementById("kpi-stop-name");
+          const stopPopEl   = document.getElementById("kpi-stop-pop");
+          const stopGreenEl = document.getElementById("kpi-stop-green");
+          if (stopNameEl)  stopNameEl.textContent  = p.stop_name || p.stop_id;
+          if (stopPopEl)   stopPopEl.textContent   = `${fmtK(sPopLow)}–${fmtK(sPopHigh)} people`;
+          if (stopGreenEl) stopGreenEl.textContent = isBaseline
+            ? `${(+p.green_pct_catchment * 100 || 0).toFixed(0)}% green`
+            : `${(+p.green_time_working_age || 0).toFixed(1)} min green`;
+          stopRowEl.classList.remove("hidden");
+        }
+      } else {
+        stopRowEl.classList.add("hidden");
+      }
+    }
+
+    // Neighbourhood comparison row
+    const nbRowEl = document.getElementById("kpi-neighbourhood-row");
+    if (nbRowEl) {
+      if (nbName && NEIGHBOURHOOD_POP[nbName]) {
+        const nb = NEIGHBOURHOOD_POP[nbName];
+        const nbStops = internal.filter(f => {
+          const [lng, lat] = f.geometry.coordinates;
+          return neighbourhoodForPoint([lng, lat]) === nbName;
+        });
+        const nbAvg = (col) => nbStops.length
+          ? nbStops.reduce((s, f) => s + (+f.properties[col] || 0), 0) / nbStops.length : 0;
+        const nbPopLow  = nbStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_low  || 0) + (+f.properties.pop_el_reach_low  || 0) + (+f.properties.pop_ch_reach_low  || 0), 0) / (nbStops.length || 1);
+        const nbPopHigh = nbStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_high || 0) + (+f.properties.pop_el_reach_high || 0) + (+f.properties.pop_ch_reach_high || 0), 0) / (nbStops.length || 1);
+
+        const nbNameEl  = document.getElementById("kpi-nb-name");
+        const nbPopEl   = document.getElementById("kpi-nb-pop");
+        const nbGreenEl = document.getElementById("kpi-nb-green");
+        if (nbNameEl)  nbNameEl.textContent  = nbName.replace("-kvarteret", "");
+        if (nbPopEl)   nbPopEl.textContent   = `${fmtK(nbPopLow)}–${fmtK(nbPopHigh)} people`;
+        if (nbGreenEl) nbGreenEl.textContent = isBaseline
+          ? `${(nbAvg("green_pct_catchment") * 100).toFixed(0)}% green`
+          : `${nbAvg("green_time_working_age").toFixed(1)} min green`;
+        nbRowEl.classList.remove("hidden");
+
+        for (const [suffix, field] of [
+          ["children", "children"], ["working-age", "working_age"], ["elderly", "elderly"]
+        ]) {
+          const nbShare = Math.round((nb[field] / nb.total) * 100);
+          const tickEl  = document.getElementById(`nb-tick-${suffix}`);
+          if (tickEl) { tickEl.style.left = `${nbShare}%`; tickEl.classList.remove("hidden"); }
+        }
+      } else {
+        nbRowEl.classList.add("hidden");
+        ["children", "working-age", "elderly"].forEach(s =>
+          document.getElementById(`nb-tick-${s}`)?.classList.add("hidden")
+        );
+      }
+    }
   }
 
-  // Cross-highlight: map stop click ↔ scatter dot click; also update green block
+  // Cross-highlight: map stop click ↔ scatter dot click
   setStopSelectCallback(id => {
+    setSelectedStop(id);
     highlightScatterStop(id);
-    _updateGreenBlock(getStopFeatures(), id);
+    _updatePeopleGreen(getStopFeatures(), id, getActiveNeighbourhood());
   });
   setScatterSelectCallback(id => {
+    setSelectedStop(id);
     highlightMapStop(id);
-    _updateGreenBlock(getStopFeatures(), id);
+    _updatePeopleGreen(getStopFeatures(), id, getActiveNeighbourhood());
+  });
+
+  document.getElementById("kpi-stop-close")?.addEventListener("click", () => {
+    setSelectedStop(null);
+    highlightMapStop(null);
+    highlightScatterStop(null);
+    _updatePeopleGreen(getStopFeatures(), null, getActiveNeighbourhood());
   });
 
   // CTA button inside the last narrative step (wired initially; re-wired on tab switch)
@@ -337,9 +426,8 @@ export function initToolPanel() {
         const features = getStopFeatures();
         if (features) {
           initScatter(features);
-          _updateGreenBlock(features, null);
-        }
-        else { setTimeout(tryInit, 200); }
+          _updatePeopleGreen(features, null, "");
+        } else { setTimeout(tryInit, 200); }
       };
       tryInit();
     });
@@ -371,30 +459,34 @@ export function initToolPanel() {
     });
   }
 
-  // Neighbourhood selector — update population stats and demographic bars
-  const NEIGHBOURHOOD_DATA = {
-    "":           { pop: "356k", children: 18, working_age: 74, elderly: 8 },
-    "indre":      { pop:  "88k", children: 16, working_age: 76, elderly: 8 },
-    "ydre":       { pop:  "95k", children: 20, working_age: 72, elderly: 8 },
-    "nordvest":   { pop:  "72k", children: 17, working_age: 74, elderly: 9 },
-    "utterslev":  { pop:  "54k", children: 19, working_age: 72, elderly: 9 },
-    "bispebjerg": { pop:  "47k", children: 18, working_age: 73, elderly: 9 },
-  };
-
-  function _updateDemoBars(key) {
-    const d = NEIGHBOURHOOD_DATA[key] || NEIGHBOURHOOD_DATA[""];
-    const kpi = document.getElementById("kpi-population");
-    if (kpi) kpi.textContent = d.pop;
-    for (const [suffix, field] of [
-      ["children", "children"], ["working-age", "working_age"], ["elderly", "elderly"]
-    ]) {
-      const fill = document.getElementById(`bar-${suffix}`);
-      const pct  = document.getElementById(`pct-${suffix}`);
-      if (fill) fill.style.width = `${d[field]}%`;
-      if (pct)  pct.textContent  = `${d[field]}%`;
-    }
-  }
-
+  // Neighbourhood selector
   const nSel = document.getElementById("neighbourhood-select");
-  if (nSel) nSel.addEventListener("change", () => _updateDemoBars(nSel.value));
+  if (nSel) {
+    nSel.addEventListener("change", () => {
+      const nbName = nSel.value;
+      setActiveNeighbourhood(nbName);
+      setNeighbourhoodBoundary(nbName);
+
+      const features = getStopFeatures();
+      if (nbName && features) {
+        const internal  = features.filter(f => !f.properties.context);
+        const nbStopIds = new Set(
+          internal
+            .filter(f => neighbourhoodForPoint(f.geometry.coordinates) === nbName)
+            .map(f => String(f.properties.stop_id))
+        );
+        const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
+        const scoreKey   = isBaseline ? "score_catchment" : "score_health_combined";
+        const nbStopArr  = internal.filter(f => nbStopIds.has(String(f.properties.stop_id)));
+        const nbAvg      = nbStopArr.length
+          ? nbStopArr.reduce((s, f) => s + (+f.properties[scoreKey] || 0), 0) / nbStopArr.length
+          : null;
+        updateNeighbourhoodFilter(nbStopIds, nbAvg);
+      } else {
+        updateNeighbourhoodFilter(null, null);
+      }
+
+      _updatePeopleGreen(features, getSelectedStop(), nbName);
+    });
+  }
 }
