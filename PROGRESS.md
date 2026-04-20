@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-20 (Task 6: right panel HTML/CSS restructure — neighbourhood selector + People+Green block)*
+*Last updated: 2026-04-20 (Task 7: scatter.js neighbourhood dimming + distribution accent tick)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).

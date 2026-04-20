@@ -79,8 +79,35 @@ let _currentGroup = "aggregate";
 let _dotElements = new Map();   // stop_id → <circle> element
 let _selectedId   = null;
 let _scatterSelectCallback = null;
+let _neighbourStopIds = null;   // Set of stop_id strings in the active neighbourhood; null = show all
+let _nbAvgScore = null;
 
 export function setScatterSelectCallback(fn) { _scatterSelectCallback = fn; }
+
+/**
+ * Dim stops outside the given Set of stop_ids.
+ * Pass null to restore full opacity for all stops.
+ */
+export function filterByNeighbourhood(stopIdSet) {
+  _neighbourStopIds = stopIdSet;
+  _dotElements.forEach((circ, id) => {
+    const inNb = !stopIdSet || stopIdSet.has(id);
+    circ.setAttribute("fill-opacity", inNb ? 0.75 : 0.12);
+    circ.setAttribute("r", inNb && id === _selectedId ? 4.5 : inNb ? 2.2 : 1.8);
+  });
+}
+
+/**
+ * Apply neighbourhood filter to both scatter and distribution.
+ * @param {Set<string>|null} stopIdSet  — Set of stop_id strings; null = clear filter
+ * @param {number|null}      avgScore   — neighbourhood average score for distribution tick
+ */
+export function updateNeighbourhoodFilter(stopIdSet, avgScore) {
+  _neighbourStopIds = stopIdSet;
+  _nbAvgScore       = avgScore ?? null;
+  drawScatter(_currentGroup);
+  drawDistribution(_currentGroup, _nbAvgScore);
+}
 
 export function highlightScatterStop(stopId) {
   _selectedId = stopId != null ? String(stopId) : null;
@@ -125,7 +152,7 @@ function _updateStopLabel() {
   svg.appendChild(label);
 }
 
-function drawDistribution(group) {
+function drawDistribution(group, nbAvgScore = null) {
   const container = document.getElementById("distribution-container");
   if (!container || !_features?.length) return;
 
@@ -146,9 +173,24 @@ function drawDistribution(group) {
     const color = scoreColor(i / (BANDS.length - 1));
     const barW  = Math.round((counts[i] / maxCnt) * 100);
     const rangeTitle = `${b.lo.toFixed(2)}–${b.hi === Infinity ? "1.0+" : b.hi.toFixed(2)}`;
+
+    // Neighbourhood accent tick
+    let nbTick = "";
+    if (nbAvgScore != null) {
+      const normNb = _normalize(nbAvgScore);
+      if (normNb >= b.lo && normNb < (b.hi === Infinity ? 2 : b.hi)) {
+        const posWithinBand = b.hi === Infinity ? 0.5 : (normNb - b.lo) / (b.hi - b.lo);
+        const tickPct = Math.round(posWithinBand * barW);
+        nbTick = `<div class="dist-nb-tick" style="left:${tickPct}%"></div>`;
+      }
+    }
+
     return `<div class="dist-row">
       <span class="dist-label" style="color:${b.textColor}" title="${rangeTitle}">${b.label}</span>
-      <div class="dist-track"><div class="dist-fill" style="width:${barW}%;background:${color}"></div></div>
+      <div class="dist-track" style="position:relative">
+        <div class="dist-fill" style="width:${barW}%;background:${color}"></div>
+        ${nbTick}
+      </div>
       <span class="dist-pct">${pct}%</span>
     </div>`;
   }).join("");
@@ -247,6 +289,10 @@ function drawScatter(group) {
       highlightScatterStop(newId);
       if (_scatterSelectCallback) _scatterSelectCallback(newId);
     });
+    if (_neighbourStopIds) {
+      const inNb = _neighbourStopIds.has(stopId);
+      circle.setAttribute("fill-opacity", inNb ? 0.75 : 0.12);
+    }
     _dotElements.set(stopId, circle);
     g.appendChild(circle);
   }
@@ -264,16 +310,16 @@ export function initScatter(features) {
     return true;
   });
   drawScatter(_currentGroup);
-  drawDistribution(_currentGroup);
+  drawDistribution(_currentGroup, _nbAvgScore);
 }
 
 export function updateScatterGroup(group) {
   _currentGroup = group;
   drawScatter(group);
-  drawDistribution(group);
+  drawDistribution(group, _nbAvgScore);
 }
 
 /** Re-draw distribution when score mode changes (baseline ↔ contextual). */
 export function updateScatterMode() {
-  drawDistribution(_currentGroup);
+  drawDistribution(_currentGroup, _nbAvgScore);
 }
