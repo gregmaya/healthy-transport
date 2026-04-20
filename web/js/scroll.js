@@ -258,6 +258,20 @@ export function initToolPanel() {
     parksChk.addEventListener("change", () => toggleParks(parksChk.checked));
   }
 
+  // Left panel collapse toggle
+  const collapseBtn = document.getElementById("tool-panel-collapse");
+  const toolPanel   = document.getElementById("tool-panel");
+  if (collapseBtn && toolPanel) {
+    const stored = localStorage.getItem("toolPanelCollapsed");
+    if (stored === "true") toolPanel.classList.add("collapsed");
+
+    collapseBtn.addEventListener("click", () => {
+      const isCollapsed = toolPanel.classList.toggle("collapsed");
+      localStorage.setItem("toolPanelCollapsed", isCollapsed);
+      resizeMap();
+    });
+  }
+
   // Score mode pill toggle — buttons live in #mode-toggle-float
   document.querySelectorAll(".mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {

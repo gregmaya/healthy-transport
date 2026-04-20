@@ -1175,3 +1175,46 @@ body.is-interactive #chart-resize-handle.dragging {
   border-left: 1px solid var(--border);
   border-radius: 999px;
 }
+
+/* ── Left panel collapse ──────────────────────────────────────────────────── */
+#tool-panel {
+  transition: max-width 0.2s ease, padding 0.2s ease;
+  overflow: hidden;
+}
+
+#tool-panel.collapsed {
+  max-width: 40px;
+  padding: 8px 0;
+}
+
+#tool-panel.collapsed .ctrl-section,
+#tool-panel.collapsed .ctrl-section-header span,
+#tool-panel.collapsed .group-buttons,
+#tool-panel.collapsed .toggle-row {
+  display: none;
+}
+
+#tool-panel-collapse {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+
+#tool-panel.collapsed #tool-panel-collapse {
+  transform: translateY(-50%) rotate(180deg);
+}

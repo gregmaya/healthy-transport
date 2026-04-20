@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-20 (Task 4: floating mode toggle, removed from left panel)*
+*Last updated: 2026-04-20 (Task 5: collapsible left panel)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
