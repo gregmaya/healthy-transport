@@ -13,6 +13,7 @@ let _rampHi = null;
 let _stopSelectCallback = null;
 let _activeGroup = "aggregate";
 let _activeMode  = "contextual";
+let _neighbourhoodFeatures = null;
 
 const STOP_SCORE_FIELD = {
   baseline:    "score_catchment",
@@ -77,6 +78,12 @@ function _addSources() {
   map.addSource("demographics-src", { type: "geojson", data: DATA.demographics });
   map.addSource("footprints-src",   { type: "geojson", data: DATA.footprints });
   map.addSource("parks-src",        { type: "geojson", data: DATA.parks });
+  map.addSource("neighbourhoods-src", { type: "geojson", data: DATA.neighbourhoods });
+
+  // Pre-fetch neighbourhood features for point-in-polygon stop assignment
+  fetch(DATA.neighbourhoods).then(r => r.json()).then(d => {
+    _neighbourhoodFeatures = d.features;
+  });
 
   // Pre-fetch segment features; apply dynamic ramp once loaded
   fetch(DATA.segments).then(r => r.json()).then(d => {
@@ -247,6 +254,20 @@ function _addLayers() {
       "circle-color": "rgba(0,0,0,0)",
       "circle-stroke-width": 2.5,
       "circle-stroke-color": "#ffffff",
+    },
+  });
+
+  // Neighbourhood boundary — hidden by default, shown when selector is active
+  map.addLayer({
+    id: "neighbourhood-boundary",
+    type: "line",
+    source: "neighbourhoods-src",
+    filter: ["==", ["get", "neighbourhood_name"], ""],
+    paint: {
+      "line-color": "#ff6700",
+      "line-width": 2,
+      "line-dasharray": [4, 3],
+      "line-opacity": 0.85,
     },
   });
 }
@@ -572,6 +593,45 @@ export function toggleParks(visible) {
   _setVisibility("parks-line", v);
 }
 
+/** Show the boundary outline for a neighbourhood by name; pass "" to hide. */
+export function setNeighbourhoodBoundary(name) {
+  if (!map.getLayer("neighbourhood-boundary")) return;
+  map.setFilter("neighbourhood-boundary",
+    name
+      ? ["==", ["get", "neighbourhood_name"], name]
+      : ["==", ["get", "neighbourhood_name"], ""]
+  );
+}
+
+/** Returns loaded neighbourhood GeoJSON features (null until fetched). */
+export function getNeighbourhoodFeatures() { return _neighbourhoodFeatures; }
+
+/**
+ * Returns the neighbourhood_name of the polygon containing [lng, lat],
+ * or null if none match. Uses ray-casting on the first ring of each polygon.
+ */
+export function neighbourhoodForPoint(lngLat) {
+  if (!_neighbourhoodFeatures) return null;
+  for (const feat of _neighbourhoodFeatures) {
+    const coords = feat.geometry.type === "Polygon"
+      ? feat.geometry.coordinates[0]
+      : feat.geometry.coordinates[0][0];  // MultiPolygon
+    if (_pointInPolygon(lngLat, coords)) return feat.properties.neighbourhood_name;
+  }
+  return null;
+}
+
+function _pointInPolygon([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
 
 export function toggleInteriorOnly(interiorOnly) {
   const segLayers = [

@@ -269,7 +269,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 ## Immediate Next Steps
 
 1. **Right panel MVP redesign** — consolidate population + Green Paths into one pane (PROGRESS.md Task 9). Layout includes neighbourhood selector, score distribution, scatter plot, and People + Green KPI section with population bars. NEIGHBOURHOOD_POP and DISTRICT_POP constants now in `web/js/config.js` for use in this task.
-2. **Neighbourhood highlighter** — built after task 1 above. The neighbourhood selector acts as a district-wide comparator, not a filter: highlights neighbourhood boundary + its stops on the map; shows neighbourhood band within district-wide distribution card; dims non-neighbourhood stops in scatter; updates People + Green KPIs.
+2. **Neighbourhood highlighter** — `neighbourhood-boundary` MapLibre layer, `setNeighbourhoodBoundary(name)`, `getNeighbourhoodFeatures()`, and `neighbourhoodForPoint(lngLat)` are now implemented in `map.js`. Wiring to the neighbourhood selector UI (right panel) is the remaining step.
 3. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b).
 4. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).
 

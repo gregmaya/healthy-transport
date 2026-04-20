@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-20 (Task 1: Add NEIGHBOURHOOD_POP and DISTRICT_POP constants)*
+*Last updated: 2026-04-20 (Task 3: neighbourhood boundary layer + point-in-polygon helpers in map.js)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
