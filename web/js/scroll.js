@@ -204,8 +204,15 @@ export function initToolPanel() {
       if (isHidden) {
         const btnRect  = btn.getBoundingClientRect();
         const top      = Math.min(btnRect.top, window.innerHeight - 40);
-        const inChartPanel = !!btn.closest("#chart-panel");
-        if (inChartPanel) {
+        const inChartPanel  = !!btn.closest("#chart-panel");
+        const inFloatToggle = !!btn.closest("#mode-toggle-float");
+        if (inFloatToggle) {
+          // Anchor below the toggle, horizontally centred
+          const popupW = 288;
+          const floatRect = document.getElementById("mode-toggle-float").getBoundingClientRect();
+          popup.style.left = `${Math.max(4, floatRect.left + (floatRect.width - popupW) / 2)}px`;
+          popup.style.top  = `${btnRect.bottom + 8}px`;
+        } else if (inChartPanel) {
           // Position popup to the LEFT of the button (right panel buttons)
           const popupW = 288;
           popup.style.left = `${Math.max(4, btnRect.left - popupW - 8)}px`;
@@ -214,7 +221,7 @@ export function initToolPanel() {
           const panelRect = document.getElementById("tool-panel").getBoundingClientRect();
           popup.style.left = `${panelRect.right + 8}px`;
         }
-        popup.style.top = `${top}px`;
+        popup.style.top = inFloatToggle ? popup.style.top : `${top}px`;
         popup.classList.remove("hidden");
         if (backdrop) backdrop.classList.remove("hidden");
       }
@@ -251,20 +258,15 @@ export function initToolPanel() {
     parksChk.addEventListener("change", () => toggleParks(parksChk.checked));
   }
 
-  // Score mode pill toggle
+  // Score mode pill toggle — buttons live in #mode-toggle-float
   document.querySelectorAll(".mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       const mode = btn.dataset.mode;
-      document.querySelectorAll(".mode-active-desc").forEach(d => d.classList.add("hidden"));
-      document.getElementById(`mode-desc-${mode}`)?.classList.remove("hidden");
       setScoreMode(mode);
-      // Update chart panel header label
-      const modeLabel = document.getElementById("chart-mode-label");
-      if (modeLabel) modeLabel.textContent = mode === "baseline" ? "Catchment Score" : "Health Score";
-      // Redraw distribution for the new mode
       updateScatterMode();
+      // _updatePeopleGreen wired in Task 8
     });
   });
 

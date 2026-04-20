@@ -41,28 +41,21 @@
   <!-- ── Map (centre, sticky) ───────────────────────────────────────────── -->
   <div id="map">
 
+    <!-- ── Floating mode toggle (global, top-centre of map viewport) ──────── -->
+    <div id="mode-toggle-float" class="hidden">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="contextual">Health Score</button>
+        <button class="mode-btn" data-mode="baseline">Catchment Score</button>
+      </div>
+      <button class="btn-icon" data-info="score" aria-label="About score modes">ⓘ</button>
+      <div class="info-popup hidden" id="info-popup-score">
+        <p><strong>Health Score</strong> — weights each street by the actual age mix of nearby residents. Elderly, children, and working-age adults each have different optimal walk distances. Reveals where a stop benefits the most people given today's population.</p>
+        <p><strong>Catchment Score</strong> — scores streets on network reach alone: how many address points fall within walking distance, every resident counted equally. Useful for identifying locations with broad physical reach, independent of today's demographics.</p>
+      </div>
+    </div>
+
     <!-- Left control panel — hidden until "Explore" button clicked -->
     <div id="tool-panel" class="hidden">
-
-      <!-- ── SCORE MODE ─────────────────────────────────────────────────── -->
-      <div class="ctrl-section">
-        <div class="ctrl-section-header">
-          <span class="ctrl-label">Score mode</span>
-          <button class="btn-icon" data-info="score" aria-label="About score modes">ⓘ</button>
-        </div>
-        <div class="info-popup hidden" id="info-popup-score">
-          <p><strong>Health Score</strong> — weights each street by the actual age mix of nearby residents. Elderly, children, and working-age adults each have different optimal walk distances. Reveals where a stop benefits the most people given today's population.</p>
-          <p><strong>Catchment Score</strong> — scores streets on network reach alone: how many address points fall within walking distance, every resident counted equally. Useful for identifying locations with broad physical reach, independent of today's demographics.</p>
-        </div>
-
-        <div class="mode-toggle">
-          <button class="mode-btn active" data-mode="contextual">Health Score</button>
-          <button class="mode-btn" data-mode="baseline">Catchment Score</button>
-        </div>
-        <p class="mode-active-desc" id="mode-desc-contextual">Weighted by who lives nearby — age-disaggregated, modelled estimates.</p>
-        <p class="mode-active-desc hidden" id="mode-desc-baseline">Infrastructure potential — shortest paths to all address points, equal weight per resident.</p>
-
-      </div>
 
       <!-- ── DEMOGRAPHIC GROUP ───────────────────────────────────────────── -->
       <div class="ctrl-section" id="group-selector-section">

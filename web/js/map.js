@@ -450,6 +450,7 @@ export function enterInteractiveTool() {
   removeImagePanel();
   document.getElementById("tool-panel").classList.remove("hidden");
   document.getElementById("chart-panel").classList.remove("hidden");
+  document.getElementById("mode-toggle-float").classList.remove("hidden");
   document.body.classList.add("is-interactive");
   _unlockMap();
   requestAnimationFrame(() => map.resize());
@@ -542,6 +543,7 @@ export function backToNarrative() {
   disableScrollLock();
   document.getElementById("tool-panel").classList.add("hidden");
   document.getElementById("chart-panel").classList.add("hidden");
+  document.getElementById("mode-toggle-float").classList.add("hidden");
   document.body.classList.remove("is-interactive");
   _lockMap();
   requestAnimationFrame(() => {
