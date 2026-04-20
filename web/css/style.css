@@ -1218,3 +1218,128 @@ body.is-interactive #chart-resize-handle.dragging {
 #tool-panel.collapsed #tool-panel-collapse {
   transform: translateY(-50%) rotate(180deg);
 }
+
+/* ── People + Green block ─────────────────────────────────────────────────── */
+.pg-kpi-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.pg-kpi-row.hidden { display: none; }
+
+.pg-kpi-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 1 1 45%;
+}
+
+.pg-kpi-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.pg-kpi-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.pg-kpi-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.pg-kpi-nb {
+  font-size: 0.78rem;
+  color: #a35c00;
+  border-left: 2px solid #ff6700;
+  padding-left: 6px;
+  margin-left: 4px;
+  gap: 4px;
+}
+
+.pg-nb-name {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.pg-sep { color: var(--muted); }
+
+.pg-kpi-stop {
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--border-subtle);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: 4px 0;
+  gap: 6px;
+}
+
+.pg-stop-name {
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-stop-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 2px;
+  margin-left: auto;
+}
+
+.demo-bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 34px 44px;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.demo-bar-green {
+  font-size: 0.7rem;
+  color: #2e7d32;
+  text-align: right;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.demo-bar-track { position: relative; }
+
+.demo-bar-nb-tick {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #ff6700;
+  border-radius: 1px;
+  opacity: 0.8;
+}
+
+.demo-bar-nb-tick.hidden { display: none; }
+
+.neighbourhood-panel-sel {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  flex: 1;
+}
