@@ -23,10 +23,10 @@ const GROUP_Y_FIELD = {
 };
 
 const GROUP_LABEL = {
-  aggregate:   "All groups",
-  working_age: "Working-age",
-  elderly:     "Elderly",
-  children:    "Children",
+  aggregate:   "Health Score (All)",
+  working_age: "Health Score (Working age)",
+  elderly:     "Health Score (Elderly)",
+  children:    "Health Score (Children)",
 };
 
 // Design palette — matches map.js _buildRamp (orange=low, blue=high)
@@ -106,7 +106,7 @@ export function updateNeighbourhoodFilter(stopIdSet, avgScore) {
   _neighbourStopIds = stopIdSet;
   _nbAvgScore       = avgScore ?? null;
   drawScatter(_currentGroup);
-  drawDistribution(_currentGroup, _nbAvgScore);
+  drawDistribution(_currentGroup);
 }
 
 export function highlightScatterStop(stopId) {
@@ -152,46 +152,45 @@ function _updateStopLabel() {
   svg.appendChild(label);
 }
 
-function drawDistribution(group, nbAvgScore = null) {
+function drawDistribution(group) {
   const container = document.getElementById("distribution-container");
   if (!container || !_features?.length) return;
 
-  // Pick score column based on active mode
   const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
   const scoreKey   = isBaseline ? "score_catchment" : (GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate);
 
-  // Normalise values so band thresholds (0–1) match the colour scale
-  const rawVals = _features.map(f => +(f.properties[scoreKey]) || 0);
-  const vals    = rawVals.map(v => _normalize(v));
-  const n       = vals.length;
+  const allVals  = _features.map(f => _normalize(+(f.properties[scoreKey]) || 0));
+  const n        = allVals.length;
 
-  const counts = BANDS.map(b => vals.filter(v => v >= b.lo && v < b.hi).length);
-  const maxCnt = Math.max(...counts, 1);
+  // Nørrebro-wide band percentages
+  const nrCounts = BANDS.map(b => allVals.filter(v => v >= b.lo && v < (b.hi === Infinity ? 2 : b.hi)).length);
+  const nrPcts   = nrCounts.map(c => n > 0 ? Math.round((c / n) * 100) : 0);
+
+  // Neighbourhood band percentages (if selected)
+  let nbPcts = null;
+  if (_neighbourStopIds?.size) {
+    const nbVals = _features
+      .filter(f => _neighbourStopIds.has(String(f.properties.stop_id)))
+      .map(f => _normalize(+(f.properties[scoreKey]) || 0));
+    const nbN = nbVals.length;
+    const nbCounts = BANDS.map(b => nbVals.filter(v => v >= b.lo && v < (b.hi === Infinity ? 2 : b.hi)).length);
+    nbPcts = nbCounts.map(c => nbN > 0 ? Math.round((c / nbN) * 100) : 0);
+  }
 
   container.innerHTML = BANDS.map((b, i) => {
-    const pct   = n > 0 ? Math.round((counts[i] / n) * 100) : 0;
+    const displayPct = nbPcts ? nbPcts[i] : nrPcts[i];
     const color = scoreColor(i / (BANDS.length - 1));
-    const barW  = Math.round((counts[i] / maxCnt) * 100);
-    const rangeTitle = `${b.lo.toFixed(2)}–${b.hi === Infinity ? "1.0+" : b.hi.toFixed(2)}`;
-
-    // Neighbourhood accent tick
-    let nbTick = "";
-    if (nbAvgScore != null) {
-      const normNb = _normalize(nbAvgScore);
-      if (normNb >= b.lo && normNb < (b.hi === Infinity ? 2 : b.hi)) {
-        const posWithinBand = b.hi === Infinity ? 0.5 : (normNb - b.lo) / (b.hi - b.lo);
-        const tickPct = Math.round(posWithinBand * barW);
-        nbTick = `<div class="dist-nb-tick" style="left:${tickPct}%"></div>`;
-      }
-    }
+    const nrMarker = nbPcts
+      ? `<div class="dist-nr-marker" style="left:${nrPcts[i]}%"></div>`
+      : "";
 
     return `<div class="dist-row">
-      <span class="dist-label" style="color:${b.textColor}" title="${rangeTitle}">${b.label}</span>
+      <span class="dist-label" style="color:${b.textColor}">${b.label}</span>
       <div class="dist-track" style="position:relative">
-        <div class="dist-fill" style="width:${barW}%;background:${color}"></div>
-        ${nbTick}
+        <div class="dist-fill" style="width:${displayPct}%;background:${color}"></div>
+        ${nrMarker}
       </div>
-      <span class="dist-pct">${pct}%</span>
+      <span class="dist-pct">${displayPct}%</span>
     </div>`;
   }).join("");
 }
@@ -209,17 +208,8 @@ function drawScatter(group) {
   const yVals   = props.map(p => +(p[yKey]) || 0);
   const aggVals = props.map(p => +(p["score_health_combined"]) || 0); // z-order only
 
-  const xDataMin = Math.min(...xVals), xDataMax = Math.max(...xVals);
-  const yDataMin = Math.min(...yVals), yDataMax = Math.max(...yVals);
-  const xPad = (xDataMax - xDataMin) * 0.06 || 0.02;
-  const yPad = (yDataMax - yDataMin) * 0.06 || 0.02;
-  const xDomMin = Math.max(0, xDataMin - xPad);
-  const xDomMax = Math.min(1, xDataMax + xPad);
-  const yDomMin = Math.max(0, yDataMin - yPad);
-  const yDomMax = Math.min(1, yDataMax + yPad);
-
-  const px = v => ML + ((v - xDomMin) / (xDomMax - xDomMin)) * PW;
-  const py = v => MT + PH - ((v - yDomMin) / (yDomMax - yDomMin)) * PH;
+  const px = v => ML + v * PW;
+  const py = v => MT + PH * (1 - v);
 
   container.innerHTML = "";
   const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` });
@@ -230,34 +220,27 @@ function drawScatter(group) {
   svg.appendChild(el("line", { x1: ML, y1: MT, x2: ML, y2: MT + PH, stroke: "#ddd", "stroke-width": 1 }));
   svg.appendChild(el("line", { x1: ML, y1: MT + PH, x2: ML + PW, y2: MT + PH, stroke: "#ddd", "stroke-width": 1 }));
 
-  // Diagonal reference line y = x (clip to plot bounds)
-  const diagMin = Math.max(xDomMin, yDomMin);
-  const diagMax = Math.min(xDomMax, yDomMax);
-  if (diagMax > diagMin) {
-    svg.appendChild(el("line", {
-      x1: px(diagMin), y1: py(diagMin),
-      x2: px(diagMax), y2: py(diagMax),
-      stroke: "#ccc", "stroke-width": 1, "stroke-dasharray": "4,3",
-    }));
-  }
+  // Diagonal reference line y = x (full [0,1] range)
+  svg.appendChild(el("line", {
+    x1: px(0), y1: py(0),
+    x2: px(1), y2: py(1),
+    stroke: "#ccc", "stroke-width": 1, "stroke-dasharray": "4,3",
+  }));
 
-  // Grid + ticks
-  const NTICKS = 4;
-  for (let i = 0; i <= NTICKS; i++) {
-    const t = i / NTICKS;
-    const xv = xDomMin + t * (xDomMax - xDomMin);
-    const yv = yDomMin + t * (yDomMax - yDomMin);
-    svg.appendChild(el("line", { x1: px(xv), y1: MT, x2: px(xv), y2: MT + PH, stroke: "#f0f0f0", "stroke-width": 1 }));
-    svg.appendChild(el("line", { x1: ML, y1: py(yv), x2: ML + PW, y2: py(yv), stroke: "#f0f0f0", "stroke-width": 1 }));
-    svg.appendChild(el("text", { x: px(xv), y: MT + PH + 11, "font-size": 8.5, fill: "#888", "text-anchor": "middle" }, fmt(xv)));
-    svg.appendChild(el("text", { x: ML - 4, y: py(yv) + 3,   "font-size": 8.5, fill: "#888", "text-anchor": "end"    }, fmt(yv)));
+  // Grid + ticks (fixed 0, 0.25, 0.5, 0.75, 1.0)
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    svg.appendChild(el("line", { x1: px(t), y1: MT, x2: px(t), y2: MT + PH, stroke: "#f0f0f0", "stroke-width": 1 }));
+    svg.appendChild(el("line", { x1: ML, y1: py(t), x2: ML + PW, y2: py(t), stroke: "#f0f0f0", "stroke-width": 1 }));
+    svg.appendChild(el("text", { x: px(t), y: MT + PH + 11, "font-size": 8.5, fill: "#888", "text-anchor": "middle" }, t.toFixed(2)));
+    svg.appendChild(el("text", { x: ML - 4, y: py(t) + 3,   "font-size": 8.5, fill: "#888", "text-anchor": "end"    }, t.toFixed(2)));
   }
 
   // Axis labels (no arrows)
   svg.appendChild(el("text", {
     x: ML + PW / 2, y: H - 2,
     "font-size": 9, fill: "#555", "text-anchor": "middle",
-  }, "Catchment Score (network coverage)"));
+  }, "Catchment Score"));
   svg.appendChild(el("text", {
     x: 8, y: MT + PH / 2,
     "font-size": 9, fill: "#555", "text-anchor": "middle",
@@ -310,16 +293,16 @@ export function initScatter(features) {
     return true;
   });
   drawScatter(_currentGroup);
-  drawDistribution(_currentGroup, _nbAvgScore);
+  drawDistribution(_currentGroup);
 }
 
 export function updateScatterGroup(group) {
   _currentGroup = group;
   drawScatter(group);
-  drawDistribution(group, _nbAvgScore);
+  drawDistribution(group);
 }
 
 /** Re-draw distribution when score mode changes (baseline ↔ contextual). */
 export function updateScatterMode() {
-  drawDistribution(_currentGroup, _nbAvgScore);
+  drawDistribution(_currentGroup);
 }

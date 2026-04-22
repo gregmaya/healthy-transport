@@ -10,6 +10,8 @@ let _dynamicRampApplied = false;
 let _activeDemoFields = null;
 let _rampLo = null;
 let _rampHi = null;
+let _catchRampLo = null;
+let _catchRampHi = null;
 let _stopSelectCallback = null;
 let _activeGroup = "aggregate";
 let _activeMode  = "contextual";
@@ -50,7 +52,7 @@ export function initMap() {
     center: MAP_INIT.center,
     zoom: MAP_INIT.zoom,
     minZoom: 11,
-    maxZoom: 18,
+    maxZoom: 17,
     maxBounds: [[12.46, 55.64], [12.64, 55.74]],
     attributionControl: false,
   });
@@ -197,6 +199,18 @@ function _addLayers() {
     },
   });
 
+  // Neighbourhood fill — grey highlight, sits behind all data layers; hidden by default
+  map.addLayer({
+    id: "neighbourhood-fill",
+    type: "fill",
+    source: "neighbourhoods-src",
+    filter: ["==", ["get", "neighbourhood_name"], ""],
+    paint: {
+      "fill-color": "#9ca3af",
+      "fill-opacity": 0.18,
+    },
+  });
+
   // Scored segments (aggregate) — hidden initially
   map.addLayer({
     id: "segments-aggregate",
@@ -257,19 +271,6 @@ function _addLayers() {
     },
   });
 
-  // Neighbourhood boundary — hidden by default, shown when selector is active
-  map.addLayer({
-    id: "neighbourhood-boundary",
-    type: "line",
-    source: "neighbourhoods-src",
-    filter: ["==", ["get", "neighbourhood_name"], ""],
-    paint: {
-      "line-color": "#ff6700",
-      "line-width": 2,
-      "line-dasharray": [4, 3],
-      "line-opacity": 0.85,
-    },
-  });
 }
 
 // Band definitions for stop popups (mirrors scatter.js BANDS — keep in sync)
@@ -307,8 +308,10 @@ function _addPopups() {
         ? "score_catchment"
         : (STOP_SCORE_FIELD[_activeGroup] || STOP_SCORE_FIELD.aggregate);
       const rawScore = +(p[activeField]) || 0;
-      const normScore = (_rampLo !== null && _rampHi !== _rampLo)
-        ? Math.max(0, Math.min(1, (rawScore - _rampLo) / (_rampHi - _rampLo)))
+      const _lo = isBaseline ? _catchRampLo : _rampLo;
+      const _hi = isBaseline ? _catchRampHi : _rampHi;
+      const normScore = (_lo !== null && _hi !== _lo)
+        ? Math.max(0, Math.min(1, (rawScore - _lo) / (_hi - _lo)))
         : rawScore;
       const band = _getBand(normScore);
       const modeName = isBaseline ? "Catchment Score" : "Health Score";
@@ -363,11 +366,14 @@ function _addPopups() {
       ? "score_catchment"
       : (STOP_SCORE_FIELD[_activeGroup] || STOP_SCORE_FIELD.aggregate);
     const rawScore = +(p[scoreField]) || 0;
-    const normScore = (_rampLo !== null && _rampHi !== _rampLo)
-      ? Math.max(0, Math.min(1, (rawScore - _rampLo) / (_rampHi - _rampLo)))
+    const isBaselineStop = _activeMode === "baseline";
+    const _lo = isBaselineStop ? _catchRampLo : _rampLo;
+    const _hi = isBaselineStop ? _catchRampHi : _rampHi;
+    const normScore = (_lo !== null && _hi !== _lo)
+      ? Math.max(0, Math.min(1, (rawScore - _lo) / (_hi - _lo)))
       : rawScore;
     const band = _getBand(normScore);
-    const modeName = _activeMode === "baseline" ? "Catchment Score" : "Health Score";
+    const modeName = isBaselineStop ? "Catchment Score" : "Health Score";
 
     new maplibregl.Popup({ maxWidth: "250px" })
       .setLngLat(e.lngLat)
@@ -597,8 +603,8 @@ export function toggleParks(visible) {
 
 /** Show the boundary outline for a neighbourhood by name; pass "" to hide. */
 export function setNeighbourhoodBoundary(name) {
-  if (!map.getLayer("neighbourhood-boundary")) return;
-  map.setFilter("neighbourhood-boundary",
+  if (!map.getLayer("neighbourhood-fill")) return;
+  map.setFilter("neighbourhood-fill",
     name
       ? ["==", ["get", "neighbourhood_name"], name]
       : ["==", ["get", "neighbourhood_name"], ""]
@@ -654,8 +660,11 @@ export function toggleInteriorOnly(interiorOnly) {
 
 // Low scores → orange, high scores → blue (orange = underserved, blue = well-served)
 function _buildRamp(field) {
-  if (_rampLo === null) return ["get", field]; // fallback before domain is set
-  const at = (t) => _rampLo + (_rampHi - _rampLo) * t;
+  const isCatch = field === "score_catchment";
+  const lo = isCatch ? _catchRampLo : _rampLo;
+  const hi = isCatch ? _catchRampHi : _rampHi;
+  if (lo === null) return ["get", field]; // fallback before domain is set
+  const at = (t) => lo + (hi - lo) * t;
   return [
     "interpolate", ["linear"], ["get", field],
     at(0.0),  "#ff6700",  // pumpkin-spice — low / underserved
@@ -672,6 +681,13 @@ function _applyDynamicRamp(features) {
   vals.sort((a, b) => a - b);
   _rampLo = vals[0];
   _rampHi = vals[vals.length - 1];
+
+  const cVals = features.map(f => +f.properties.score_catchment).filter(v => !isNaN(v));
+  if (cVals.length) {
+    cVals.sort((a, b) => a - b);
+    _catchRampLo = cVals[0];
+    _catchRampHi = cVals[cVals.length - 1];
+  }
 
   if (map.getLayer("segments-aggregate"))   map.setPaintProperty("segments-aggregate",   "line-color", _buildRamp("score_health_combined"));
   if (map.getLayer("segments-working_age")) map.setPaintProperty("segments-working_age", "line-color", _buildRamp("score_health_working_age"));
@@ -707,6 +723,32 @@ function _updateLegend() {
 
 /** Returns the data-driven ramp domain so scatter.js can use identical colors. */
 export function getRampDomain() { return { lo: _rampLo, hi: _rampHi }; }
+
+/**
+ * Set the circle-radius paint property for the stops layer.
+ * mode: "none" → uniform size; "people" → scaled by pop_wa_reach_mid;
+ * "green" → scaled by green_time_working_age.
+ */
+export function setStopSizeMode(mode) {
+  if (!map.getLayer("stops-layer")) return;
+  if (mode === "none") {
+    map.setPaintProperty("stops-layer", "circle-radius",
+      ["case", ["get", "context"], 3.5, 5]);
+    return;
+  }
+  const field = mode === "people" ? "pop_wa_reach_mid" : "green_time_working_age";
+  const stops = _stopFeatures?.filter(f => !f.properties.context) ?? [];
+  if (!stops.length) return;
+  const vals = stops.map(f => +f.properties[field] || 0).filter(v => v > 0);
+  if (!vals.length) return;
+  vals.sort((a, b) => a - b);
+  const lo = vals[0], hi = vals[vals.length - 1];
+  if (lo === hi) return;
+  map.setPaintProperty("stops-layer", "circle-radius", [
+    "case", ["get", "context"], 3.5,
+    ["interpolate", ["linear"], ["get", field], lo, 3, hi, 12],
+  ]);
+}
 
 /** Trigger a MapLibre resize (call after the map container changes dimensions). */
 export function resizeMap() { if (map) requestAnimationFrame(() => map.resize()); }

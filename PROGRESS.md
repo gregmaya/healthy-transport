@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-20 (Tasks 8+9: right-panel MVP redesign + neighbourhood comparator complete)*
+*Last updated: 2026-04-22 (Corrections to tasks 8+9: 11 bug fixes and UI improvements)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -47,6 +47,8 @@ Ordered working list. Delete items when done.
 ~~8. **Right panel MVP redesign**~~ ✅ DONE — Floating mode toggle (`#mode-toggle-float`) at top-centre of map viewport; collapsible left panel with localStorage persistence; merged People + Green section with real flat-decay population KPIs (`pop_*_reach_*`), stop KPI row (appears on stop click), green annotation per group bar. `NEIGHBOURHOOD_POP` + `DISTRICT_POP` added to `config.js`; `activeNeighbourhood` + `selectedStop` added to `state.js`.
 
 ~~9. **Neighbourhood highlighter**~~ ✅ DONE — Neighbourhood selector in chart-panel header drives: MapLibre boundary outline (`neighbourhood-boundary` layer via `setNeighbourhoodBoundary`), scatter dimming (`updateNeighbourhoodFilter`), distribution accent tick, People + Green comparison row and bar ticks. Client-side point-in-polygon (`neighbourhoodForPoint`) assigns stops to neighbourhoods.
+
+~~10. **Corrections to tasks 8+9**~~ ✅ DONE — 11 targeted fixes: (1) separate catchment ramp domain so stops colour correctly in catchment mode; (2) mode-toggle-float z-index raised above tab bar + positioned below it; (3) scatter axes fixed 0–1 with 0.25 ticks, Y labels → "Health Score (All/…)"; (4) neighbourhood polygon layer changed from orange line to grey fill (0.18 opacity) behind data; (5) neighbourhood dropdown styled as plain bold title; (6) distribution bars show actual %, black Nørrebro baseline marker when neighbourhood selected, "Distribution" header removed; (7) collapse button shows "‹ Hide" label with arrow; (8) People+Green block redesigned to 70/30 layout, no emojis, uncertainty ±%, green column; (9) stop size radio buttons (uniform / people in catchment / green time); (10) maxZoom tightened to 17; (11) parks clip extended to 1000m buffer (+9 parks covering Frederiksberg), scoring re-run.
 
 ---
 

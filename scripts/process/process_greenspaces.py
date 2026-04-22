@@ -1,7 +1,9 @@
 """
 Process Copenhagen green spaces into a single Nørrebro GeoPackage.
 
-Combines two layers (clipped to 800m buffer around Nørrebro):
+Combines two layers (clipped to 1000m buffer around Nørrebro, matching
+SCORING_BUFFER_M so that bus stops near the district edge can reach
+Frederiksberg parks during scoring):
 - parkregister: Official park registry polygons
 - legeplads: Playground points
 
@@ -9,8 +11,8 @@ Column names are translated from Danish to English for readability.
 
 Outputs:
     data/processed/norrebro_greenspaces.gpkg
-        Layer 'parks': park polygons within 800m of Nørrebro
-        Layer 'playgrounds': playground points within 800m of Nørrebro
+        Layer 'parks': park polygons within 1000m of Nørrebro
+        Layer 'playgrounds': playground points within 1000m of Nørrebro
 
 Usage:
     python scripts/process/process_greenspaces.py
@@ -30,9 +32,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from utils.config import (
     GREENSPACES_OUTPUT,
     GREENSPACES_RAW_DIR,
-    MAX_WALK_DISTANCE,
     NORREBRO_BOUNDARY_FILE,
     NORREBRO_BOUNDARY_LAYER,
+    SCORING_BUFFER_M,
 )
 
 logging.basicConfig(
@@ -89,16 +91,17 @@ def main():
     logger.info("PROCESS GREEN SPACES")
     logger.info("=" * 60)
 
-    # Load boundary and create 800m buffer
+    # Load boundary and create 1000m buffer (matching SCORING_BUFFER_M so that
+    # bus stops near the district edge can reach Frederiksberg parks during scoring)
     boundary = gpd.read_file(NORREBRO_BOUNDARY_FILE, layer=NORREBRO_BOUNDARY_LAYER)
     logger.info("Loaded boundary: CRS %s", boundary.crs)
 
-    buffered = boundary.buffer(MAX_WALK_DISTANCE).union_all()
+    buffered = boundary.buffer(SCORING_BUFFER_M).union_all()
     bbox = box(*gpd.GeoSeries([buffered], crs=boundary.crs).total_bounds)
 
-    # --- Layer 1: parks (clipped to 800m buffer) ---
+    # --- Layer 1: parks (clipped to 1000m buffer) ---
     logger.info("-" * 60)
-    logger.info("LAYER 1: parks (clipped to %dm buffer)", MAX_WALK_DISTANCE)
+    logger.info("LAYER 1: parks (clipped to %dm buffer)", SCORING_BUFFER_M)
     logger.info("-" * 60)
 
     parks_path = GREENSPACES_RAW_DIR / "kk_parkregister.gpkg"
@@ -106,7 +109,7 @@ def main():
     logger.info("Loaded %d park features within bbox", len(parks))
 
     parks = parks[parks.intersects(buffered)]
-    logger.info("Clipped to %d parks within %dm buffer", len(parks), MAX_WALK_DISTANCE)
+    logger.info("Clipped to %d parks within %dm buffer", len(parks), SCORING_BUFFER_M)
 
     # Keep only mapped columns + geometry, rename to English
     parks_cols = [c for c in PARKREGISTER_COLUMNS if c in parks.columns]
@@ -119,9 +122,9 @@ def main():
     parks.to_file(GREENSPACES_OUTPUT, layer="parks", driver="GPKG")
     logger.info("Saved layer 'parks': %d features", len(parks))
 
-    # --- Layer 2: playgrounds (clipped to 800m buffer) ---
+    # --- Layer 2: playgrounds (clipped to 1000m buffer) ---
     logger.info("-" * 60)
-    logger.info("LAYER 2: playgrounds (clipped to %dm buffer)", MAX_WALK_DISTANCE)
+    logger.info("LAYER 2: playgrounds (clipped to %dm buffer)", SCORING_BUFFER_M)
     logger.info("-" * 60)
 
     playgrounds_path = GREENSPACES_RAW_DIR / "kk_legeplads.gpkg"
@@ -129,7 +132,7 @@ def main():
     logger.info("Loaded %d playground features within bbox", len(playgrounds))
 
     playgrounds = playgrounds[playgrounds.intersects(buffered)]
-    logger.info("Clipped to %d playgrounds within %dm buffer", len(playgrounds), MAX_WALK_DISTANCE)
+    logger.info("Clipped to %d playgrounds within %dm buffer", len(playgrounds), SCORING_BUFFER_M)
 
     # Keep only mapped columns + geometry, rename to English
     pg_cols = [c for c in LEGEPLADS_COLUMNS if c in playgrounds.columns]

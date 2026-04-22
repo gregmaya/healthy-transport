@@ -173,7 +173,7 @@ def main():
     # --- Load existing scored pedestrian segments ---
     log.info("Loading existing scored segments from %s", WEB_SEGMENTS_GEOJSON)
     scored_old = gpd.read_file(WEB_SEGMENTS_GEOJSON).to_crs(CRS_DENMARK)
-    score_cols = [c for c in scored_old.columns if c.startswith("score_") or c.startswith("green_")]
+    score_cols = [c for c in scored_old.columns if c.startswith("score_") or c.startswith("green_") or c.startswith("pop_")]
     log.info("Score/green columns: %s", score_cols)
 
     ped_midpoints = scored_old.geometry.centroid

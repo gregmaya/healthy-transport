@@ -102,6 +102,16 @@ GREEN_COLS = [
     "green_time_children",
 ]
 
+# Flat-decay (step-function) population headcounts per group per scenario.
+# Interpretation: residents reachable within each group's max walk time on the
+# pedestrian network, no distance weighting — everyone within the threshold
+# counts as 1.  low/mid/high reflects population model uncertainty, not distance.
+POP_REACH_COLS = [
+    "pop_wa_reach_low",  "pop_wa_reach_mid",  "pop_wa_reach_high",
+    "pop_el_reach_low",  "pop_el_reach_mid",  "pop_el_reach_high",
+    "pop_ch_reach_low",  "pop_ch_reach_mid",  "pop_ch_reach_high",
+]
+
 
 # ---------------------------------------------------------------------------
 # Main pipeline
@@ -250,7 +260,8 @@ def main() -> None:
         entrances["building_id"].notna(), entrances["entrance_id"]
     )
 
-    # Population groups — mid scenario only
+    # Population groups — mid scenario for Gaussian scoring; all three scenarios
+    # for flat-decay headcounts (section 5d).
     entrances["pop_working_age"] = (
         entrances["pop_young_adults_15_29_mid"].fillna(0)
         + entrances["pop_working_age_30_64_mid"].fillna(0)
@@ -261,8 +272,19 @@ def main() -> None:
     )
     entrances["pop_children"] = entrances["pop_children_0_14_mid"].fillna(0)
 
+    for s in ("low", "mid", "high"):
+        entrances[f"pop_working_age_{s}"] = (
+            entrances[f"pop_young_adults_15_29_{s}"].fillna(0)
+            + entrances[f"pop_working_age_30_64_{s}"].fillna(0)
+        )
+        entrances[f"pop_elderly_{s}"] = (
+            entrances[f"pop_older_adults_65_79_{s}"].fillna(0)
+            + entrances[f"pop_very_elderly_80plus_{s}"].fillna(0)
+        )
+        entrances[f"pop_children_{s}"] = entrances[f"pop_children_0_14_{s}"].fillna(0)
+
     log.info(
-        "Population totals — working_age: %.0f  elderly: %.0f  children: %.0f",
+        "Population totals (mid) — working_age: %.0f  elderly: %.0f  children: %.0f",
         entrances["pop_working_age"].sum(),
         entrances["pop_elderly"].sum(),
         entrances["pop_children"].sum(),
@@ -271,15 +293,17 @@ def main() -> None:
     # ==========================================================================
     # 5. Compute weighted accessibility statistics using decay_fn
     #
-    # One compute_stats call per group, each with:
-    #   - minutes=[max_min]        → a single distance threshold per group
-    #   - speed_m_s=group_speed    → converts minutes to the group's effective metres
-    #   - decay_fn=gaussian(...)   → Gaussian B(t) evaluated in Rust; no post-processing
+    # Traversal plan (7 passes total):
+    #   A  Gaussian  1.40 m/s  10 min  entrances   pop_working_age (scored)
+    #   B  Gaussian  0.90 m/s   8 min  entrances   pop_elderly (scored)
+    #   C  Gaussian  1.00 m/s   7 min  entrances   pop_children (scored)
+    #   D  exp(-4p)  1.40 m/s  10 min  net nodes   edge_length_m + green_length_m (bundled)
+    #   E  flat      1.40 m/s  10 min  entrances   pop_working_age low/mid/high (headcount)
+    #   F  flat      0.90 m/s   8 min  entrances   pop_elderly     low/mid/high (headcount)
+    #   G  flat      1.00 m/s   7 min  entrances   pop_children    low/mid/high (headcount)
     #
-    # Parameters are in time (minutes) matching the WHO 10-minute walk target.
-    # decay.gaussian(peak, cutoff, std) normalises internally to p ∈ [0,1].
-    #
-    # 4 network traversals total vs 24 in the previous multi-threshold approach.
+    # Multi-column bundling: passes D, E, F, G each compute multiple columns in
+    # one network traversal (stats_column_labels accepts a list).
     # ==========================================================================
 
     run_config = [
@@ -332,24 +356,26 @@ def main() -> None:
             log.info("  raw column: %s → _raw_%s", raw_col, label)
 
     # ==========================================================================
-    # 5b. Catchment: exp(-4*p)-decayed reachable walkable network length
+    # 5b. Catchment + Green Paths: bundled into one pass (same data_gdf, speed,
+    #     decay_fn, distance threshold → single network traversal).
     #
-    # Uses network_nodes_gdf (one row per dual node, weight = edge length in metres)
-    # rather than building entrances, so the score is entirely independent of
-    # population and building data.  Non-walkable edge types are pre-zeroed.
+    # Both use network_nodes_gdf (dual nodes, weights = edge length in metres).
+    # edge_length_m   → _raw_catchment   → score_catchment (normalised)
+    # green_length_m  → _raw_green_catchment → green_pct_catchment
     # ==========================================================================
 
     catchment_speed   = SCORING_WALKING_SPEEDS["catchment"]  # 1.40 m/s
     catchment_max_min = SCORING_WALK_MINUTES["catchment"]     # 10 min
+    catchment_dist_m  = int(round(catchment_max_min * 60 * catchment_speed))
 
     log.info(
-        "compute_stats [catchment]  reachable network length  speed=%.2f m/s  max=%d min  decay=%s",
-        catchment_speed, catchment_max_min, CATCHMENT_DECAY_FN,
+        "compute_stats [catchment + green bundled]  speed=%.2f m/s  max=%d min  dist=%dm  decay=%s",
+        catchment_speed, catchment_max_min, catchment_dist_m, CATCHMENT_DECAY_FN,
     )
 
     nodes_gdf, _ = layers.compute_stats(
         data_gdf=network_nodes_gdf,
-        stats_column_labels=["edge_length_m"],
+        stats_column_labels=["edge_length_m", "green_length_m"],
         nodes_gdf=nodes_gdf,
         network_structure=network_structure,
         minutes=[catchment_max_min],
@@ -358,71 +384,73 @@ def main() -> None:
         decay_fn=CATCHMENT_DECAY_FN,
     )
 
-    catchment_dist_m = int(round(catchment_max_min * 60 * catchment_speed))
-    catchment_raw_col = f"cc_edge_length_m_sum_{catchment_dist_m}"
-    if catchment_raw_col not in nodes_gdf.columns:
-        found = [c for c in nodes_gdf.columns if "edge_length_m" in c and "_sum_" in c]
-        log.warning("Expected column %s not found. Found: %s", catchment_raw_col, found)
-        catchment_raw_col = found[0] if found else None
-    if catchment_raw_col:
-        nodes_gdf["_raw_catchment"] = nodes_gdf[catchment_raw_col]
-        log.info("  raw column: %s → _raw_catchment", catchment_raw_col)
+    for raw_suffix, internal_name in [("edge_length_m", "_raw_catchment"), ("green_length_m", "_raw_green_catchment")]:
+        raw_col = f"cc_{raw_suffix}_sum_{catchment_dist_m}"
+        if raw_col not in nodes_gdf.columns:
+            found = [c for c in nodes_gdf.columns if raw_suffix in c and "_sum_" in c]
+            log.warning("Expected column %s not found. Found: %s", raw_col, found)
+            raw_col = found[0] if found else None
+        if raw_col:
+            nodes_gdf[internal_name] = nodes_gdf[raw_col]
+            nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
+            log.info("  %s → %s (dropped original)", raw_col, internal_name)
 
     # ==========================================================================
-    # 5c. Green Paths: decay-weighted green network length per group
+    # 5c. Flat-decay population headcounts (passes E, F, G)
     #
-    # Uses network_nodes_gdf with green_length_m (proportion of each 20m edge
-    # that falls inside a park polygon, zeroed for non-walkable edge types).
+    # Step-function decay (decay_fn="1"): every entrance within the group's max
+    # walk time counts equally regardless of distance — no B(d) weighting.
+    # Produces per-group, per-scenario headcounts (low/mid/high) for display
+    # in the interactive panel alongside the scored metrics.
     #
-    # Four passes:
-    #   - green_catchment   : exp(-4*p) decay, 1.40 m/s → green_pct_catchment
-    #   - green_working_age : Gaussian, 1.40 m/s → green_time_working_age (min)
-    #   - green_elderly     : Gaussian, 0.90 m/s → green_time_elderly (min)
-    #   - green_children    : Gaussian, 1.00 m/s → green_time_children (min)
+    # Each pass bundles three scenarios (low/mid/high) in one network traversal
+    # via stats_column_labels — one traversal per group, three output columns.
     #
-    # Note: catchment and working_age share the same dist_m (840m).  Each raw
-    # column is renamed and dropped before the next pass to avoid collision.
+    # Output columns on segments:
+    #   pop_wa_reach_{low,mid,high}  — working-age within 10 min (840m @ 1.40 m/s)
+    #   pop_el_reach_{low,mid,high}  — elderly within 8 min     (432m @ 0.90 m/s)
+    #   pop_ch_reach_{low,mid,high}  — children within 7 min    (420m @ 1.00 m/s)
     # ==========================================================================
 
-    # One pass: same decay and speed as catchment score.
-    # green_pct_catchment = _raw_green_catchment / _raw_catchment (dimensionless ratio).
-    # Per-group green time is derived as green_pct_catchment × SCORING_WALK_MINUTES[group]
-    # in section 6b — no separate group passes needed.
-    green_run_config = [
-        # (label,           speed_key,   min_key,    decay_fn)
-        ("green_catchment", "catchment", "catchment", CATCHMENT_DECAY_FN),
+    flat_run_config = [
+        # (prefix,    group key,    input col prefix)
+        ("pop_wa", "working_age", "pop_working_age"),
+        ("pop_el", "elderly",     "pop_elderly"),
+        ("pop_ch", "children",    "pop_children"),
     ]
 
-    for label, speed_key, min_key, decay_expr in green_run_config:
-        speed   = SCORING_WALKING_SPEEDS[speed_key]
-        max_min = SCORING_WALK_MINUTES[min_key]
+    for out_prefix, group, in_prefix in flat_run_config:
+        speed   = SCORING_WALKING_SPEEDS[group]
+        max_min = SCORING_WALK_MINUTES[group]
         dist_m  = int(round(max_min * 60 * speed))
+        cols_in = [f"{in_prefix}_{s}" for s in ("low", "mid", "high")]
 
         log.info(
-            "compute_stats [%s]  green paths  speed=%.2f m/s  max=%d min  dist=%dm",
-            label, speed, max_min, dist_m,
+            "compute_stats [%s flat headcount]  speed=%.2f m/s  max=%d min  dist=%dm  cols=%s",
+            out_prefix, speed, max_min, dist_m, cols_in,
         )
         nodes_gdf, _ = layers.compute_stats(
-            data_gdf=network_nodes_gdf,
-            stats_column_labels=["green_length_m"],
+            data_gdf=entrances,
+            stats_column_labels=cols_in,
             nodes_gdf=nodes_gdf,
             network_structure=network_structure,
             minutes=[max_min],
             speed_m_s=speed,
-            data_id_col="_node_id",
-            decay_fn=decay_expr,
+            data_id_col="_data_id",
+            decay_fn=cityseer_decay.flat(),
         )
 
-        raw_col = f"cc_green_length_m_sum_{dist_m}"
-        if raw_col not in nodes_gdf.columns:
-            found = [c for c in nodes_gdf.columns if "green_length_m" in c and "_sum_" in c]
-            log.warning("Expected column %s not found. Found: %s", raw_col, found)
-            raw_col = found[0] if found else None
-
-        if raw_col:
-            nodes_gdf[f"_raw_{label}"] = nodes_gdf[raw_col]
-            nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
-            log.info("  raw column: %s → _raw_%s (dropped original)", raw_col, label)
+        for s in ("low", "mid", "high"):
+            raw_col = f"cc_{in_prefix}_{s}_sum_{dist_m}"
+            out_col = f"{out_prefix}_reach_{s}"
+            if raw_col not in nodes_gdf.columns:
+                found = [c for c in nodes_gdf.columns if f"{in_prefix}_{s}" in c and "_sum_" in c]
+                log.warning("Expected column %s not found. Found: %s", raw_col, found)
+                raw_col = found[0] if found else None
+            if raw_col:
+                nodes_gdf[out_col] = nodes_gdf[raw_col].round(0)
+                nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
+                log.info("  %s → %s", raw_col, out_col)
 
     # ==========================================================================
     # 6. Normalise scores globally across live segments
@@ -536,8 +564,11 @@ def main() -> None:
     for col in SCORE_COLS + GREEN_COLS:
         if col in live_segs.columns:
             live_segs[col] = live_segs[col].round(5)
+    for col in POP_REACH_COLS:
+        if col in live_segs.columns:
+            live_segs[col] = live_segs[col].round(0).astype("Int64")
 
-    out_cols = ["geometry", "interior"] + [c for c in SCORE_COLS + GREEN_COLS if c in live_segs.columns]
+    out_cols = ["geometry", "interior"] + [c for c in SCORE_COLS + GREEN_COLS + POP_REACH_COLS if c in live_segs.columns]
     live_segs[out_cols].to_crs(CRS_WGS84).to_file(WEB_SEGMENTS_GEOJSON, driver="GeoJSON")
     log.info(
         "Exported pedestrian scored segments → %s  (%d features, %.0f KB)",

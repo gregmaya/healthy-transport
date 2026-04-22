@@ -56,7 +56,10 @@
 
     <!-- Left control panel — hidden until "Explore" button clicked -->
     <div id="tool-panel" class="hidden">
-      <button id="tool-panel-collapse" aria-label="Collapse panel" title="Collapse panel">‹</button>
+      <button id="tool-panel-collapse" aria-label="Collapse panel">
+        <span class="collapse-arrow">‹</span>
+        <span class="collapse-label">Hide</span>
+      </button>
 
       <!-- ── DEMOGRAPHIC GROUP ───────────────────────────────────────────── -->
       <div class="ctrl-section" id="group-selector-section">
@@ -134,6 +137,22 @@
         </label>
       </div>
 
+      <!-- ── STOP SIZE ──────────────────────────────────────────────────────── -->
+      <div class="ctrl-section">
+        <div class="ctrl-section-header">
+          <span class="ctrl-label">Stop size</span>
+        </div>
+        <label class="toggle-row">
+          <input type="radio" name="stop-size" value="none" checked /> Uniform
+        </label>
+        <label class="toggle-row">
+          <input type="radio" name="stop-size" value="people" /> People in catchment
+        </label>
+        <label class="toggle-row">
+          <input type="radio" name="stop-size" value="green" /> Green time
+        </label>
+      </div>
+
     </div><!-- #tool-panel -->
 
     <!-- Score legend -->
@@ -169,10 +188,8 @@
     <!-- Distribution card -->
     <div class="chart-block">
       <div class="chart-block-header">
-        Distribution
         <button class="btn-icon" data-info="distribution" aria-label="About score distribution">ⓘ</button>
       </div>
-      <p class="chart-subtitle">What share of stops are optimally placed?</p>
       <div class="info-popup hidden" id="info-popup-distribution">
         <p>Each bar shows the share of bus stops in a performance band. Bands are defined by a normalised health-benefit score (0–1). Higher = more benefit generated for walking residents.</p>
         <p>In <strong>Health Score</strong> mode the score is weighted by the age distribution of nearby residents. In <strong>Catchment Score</strong> mode it reflects geometric network reach only.</p>
@@ -196,77 +213,94 @@
 
     <!-- People + Green (merged) -->
     <div class="chart-block" id="people-green-block">
-      <div class="chart-block-header">
-        People + Green Access
+      <!-- ⓘ button only, no title -->
+      <div class="pg-header">
         <button class="btn-icon" data-info="people-green" aria-label="About population reach">ⓘ</button>
       </div>
       <div class="info-popup hidden" id="info-popup-people-green">
-        <p>Population figures show residents reachable within each group's maximum walk time on the pedestrian network (working-age: 10 min / 840m; elderly: 8 min / 432m; children: 7 min / 420m). Everyone within the threshold counts equally — no distance weighting. The range (low–high) reflects uncertainty in the population model, not distance. Green time shows the average minutes of that walk spent through park space.</p>
+        <p>Population figures show residents reachable within each group's maximum walk time on the pedestrian network (working-age: 10 min / 840m; elderly: 8 min / 432m; children: 7 min / 420m). The range (low–high) reflects uncertainty in the population model. Green time shows average minutes of that walk spent through park space.</p>
       </div>
 
-      <!-- District headline KPIs -->
-      <div class="pg-kpi-row" id="kpi-district-row">
-        <div class="pg-kpi-item">
-          <span class="pg-kpi-icon">&#128101;</span>
-          <span class="pg-kpi-value" id="kpi-pop-range">—</span>
-          <span class="pg-kpi-label">people within walking distance</span>
+      <!-- Fixed row: district / neighbourhood headline -->
+      <div class="pg-row pg-row--headline" id="pg-headline-row">
+        <div class="pg-col-people">
+          <div class="pg-big-num" id="pg-headline-pop">—</div>
+          <div class="pg-big-label" id="pg-headline-label">people in Nørrebro</div>
         </div>
-        <div class="pg-kpi-item">
-          <span class="pg-kpi-icon">&#127807;</span>
-          <span class="pg-kpi-value" id="kpi-green-district">—</span>
-          <span class="pg-kpi-label" id="kpi-green-district-label">avg min in green</span>
+        <div class="pg-col-green">
+          <div class="pg-big-num" id="pg-headline-green">—</div>
+          <div class="pg-big-label" id="pg-headline-green-label">avg min in green</div>
         </div>
       </div>
 
-      <!-- Neighbourhood comparison row (hidden when no neighbourhood selected) -->
-      <div class="pg-kpi-row pg-kpi-nb hidden" id="kpi-neighbourhood-row">
-        <span class="pg-nb-name" id="kpi-nb-name">—</span>
-        <span id="kpi-nb-pop">—</span>
-        <span class="pg-sep">·</span>
-        <span id="kpi-nb-green">—</span>
-      </div>
-
-      <!-- Stop KPI row (hidden until stop clicked) -->
-      <div class="pg-kpi-row pg-kpi-stop hidden" id="kpi-stop-row">
-        <span class="pg-kpi-icon">&#128652;</span>
-        <span id="kpi-stop-name" class="pg-stop-name">—</span>
-        <span id="kpi-stop-pop">—</span>
-        <span class="pg-sep">·</span>
-        <span id="kpi-stop-green">—</span>
-        <button class="pg-stop-close" id="kpi-stop-close" aria-label="Clear stop">×</button>
-      </div>
-
-      <!-- Per-group bars -->
-      <div class="demo-bars-section">
-        <div class="demo-bar-row">
-          <span class="demo-bar-label">Children<span class="demo-bar-age"> 0–14</span></span>
-          <div class="demo-bar-track">
-            <div class="demo-bar-fill" id="bar-children" style="width:13%;background:#c6dbef"></div>
-            <div class="demo-bar-nb-tick hidden" id="nb-tick-children"></div>
+      <!-- Click-based row: selected stop (hidden until stop clicked) -->
+      <div class="pg-row pg-row--stop hidden" id="pg-stop-row">
+        <div class="pg-col-people">
+          <div class="pg-stop-num" id="pg-stop-pop">—</div>
+          <div class="pg-stop-label">
+            <span id="pg-stop-name">—</span> catchment
+            <button class="pg-stop-close" id="pg-stop-close" aria-label="Clear stop">×</button>
           </div>
-          <span class="demo-bar-pct" id="pct-children">13%</span>
-          <span class="demo-bar-green" id="green-ann-children">—</span>
         </div>
-        <div class="demo-bar-row">
-          <span class="demo-bar-label">Working-age<span class="demo-bar-age"> 15–64</span></span>
-          <div class="demo-bar-track">
-            <div class="demo-bar-fill" id="bar-working-age" style="width:78%;background:#2171b5"></div>
-            <div class="demo-bar-nb-tick hidden" id="nb-tick-working-age"></div>
-          </div>
-          <span class="demo-bar-pct" id="pct-working-age">78%</span>
-          <span class="demo-bar-green" id="green-ann-working-age">—</span>
-        </div>
-        <div class="demo-bar-row">
-          <span class="demo-bar-label">Elderly<span class="demo-bar-age"> 65+</span></span>
-          <div class="demo-bar-track">
-            <div class="demo-bar-fill" id="bar-elderly" style="width:8%;background:#6baed6"></div>
-            <div class="demo-bar-nb-tick hidden" id="nb-tick-elderly"></div>
-          </div>
-          <span class="demo-bar-pct" id="pct-elderly">8%</span>
-          <span class="demo-bar-green" id="green-ann-elderly">—</span>
+        <div class="pg-col-green">
+          <div class="pg-stop-num" id="pg-stop-green">—</div>
+          <div class="pg-stop-label">avg min in green</div>
         </div>
       </div>
-      <p class="age-bar-note">Population model estimates · <a href="#" style="color:inherit">methodology</a></p>
+
+      <!-- Per-group rows -->
+      <div class="pg-groups">
+        <div class="pg-group-row" id="pg-group-children">
+          <div class="pg-col-people">
+            <div class="pg-group-label">Children <span class="pg-group-age">0–14</span></div>
+            <div class="pg-group-bar-wrap">
+              <div class="pg-group-bar-track">
+                <div class="pg-group-bar-fill" id="pgbar-children" style="width:13%"></div>
+              </div>
+              <span class="pg-group-pct" id="pg-pct-children">13%</span>
+              <span class="pg-group-unc" id="pg-unc-children"></span>
+            </div>
+          </div>
+          <div class="pg-col-green">
+            <div class="pg-group-green-val" id="pg-green-children">—</div>
+            <div class="pg-group-green-sub" id="pg-greenpath-children">—</div>
+          </div>
+        </div>
+
+        <div class="pg-group-row" id="pg-group-working-age">
+          <div class="pg-col-people">
+            <div class="pg-group-label">Working age <span class="pg-group-age">15–64</span></div>
+            <div class="pg-group-bar-wrap">
+              <div class="pg-group-bar-track">
+                <div class="pg-group-bar-fill" id="pgbar-working-age" style="width:78%"></div>
+              </div>
+              <span class="pg-group-pct" id="pg-pct-working-age">78%</span>
+              <span class="pg-group-unc" id="pg-unc-working-age"></span>
+            </div>
+          </div>
+          <div class="pg-col-green">
+            <div class="pg-group-green-val" id="pg-green-working-age">—</div>
+            <div class="pg-group-green-sub" id="pg-greenpath-working-age">—</div>
+          </div>
+        </div>
+
+        <div class="pg-group-row" id="pg-group-elderly">
+          <div class="pg-col-people">
+            <div class="pg-group-label">Elderly <span class="pg-group-age">65+</span></div>
+            <div class="pg-group-bar-wrap">
+              <div class="pg-group-bar-track">
+                <div class="pg-group-bar-fill" id="pgbar-elderly" style="width:8%"></div>
+              </div>
+              <span class="pg-group-pct" id="pg-pct-elderly">8%</span>
+              <span class="pg-group-unc" id="pg-unc-elderly"></span>
+            </div>
+          </div>
+          <div class="pg-col-green">
+            <div class="pg-group-green-val" id="pg-green-elderly">—</div>
+            <div class="pg-group-green-sub" id="pg-greenpath-elderly">—</div>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div><!-- #chart-panel -->

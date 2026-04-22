@@ -73,7 +73,7 @@ All outputs are EPSG:25832 unless noted. Paths defined in `src/utils/config.py`.
 | `norrebro_pedestrian_network.graphml` | Graph topology for routing (WGS84, in `data/raw/network/`) |
 | `norrebro_transport_stops.gpkg` | `stops`: 2,687 (bus/metro/train) · `routes`: 181 GPS-traced lines |
 | `norrebro_cycling.gpkg` | `cykeldata`: 3,638 cycling network lines (citywide) · `cykelstativ`: 1,664 bike parking points |
-| `norrebro_greenspaces.gpkg` | `parks`: 77 polygons · `playgrounds`: 34 points |
+| `norrebro_greenspaces.gpkg` | `parks`: 86 polygons (clipped to 1000m buffer, includes Frederiksberg) · `playgrounds`: 37 points |
 | `norrebro_neighbourhoods_population.csv` | 5 Nørrebro sub-neighbourhoods, age group breakdowns (source for typology model) |
 | `all_districts_population.csv` | All 68 sub-districts incl. Frederiksberg (`kvarternr`/`147` as `gm_id`), 20 age bands — produced by `parse_kkbef8_all_districts.py` + `add_frederiksberg.py`; used in Phase B |
 | `norrebro_neighbourhoods_dwellings.csv` | Dwelling types and household sizes |

@@ -29,6 +29,7 @@ import {
   removeStepOverlay,
   showImageOverlay,
   removeImagePanel,
+  setStopSizeMode,
 } from "./map.js";
 
 // enterInteractiveTool is intentionally absent from TRANSITION_FNS —
@@ -261,6 +262,13 @@ export function initToolPanel() {
     parksChk.addEventListener("change", () => toggleParks(parksChk.checked));
   }
 
+  // Stop size radio buttons
+  document.querySelectorAll("input[name='stop-size']").forEach(radio => {
+    radio.addEventListener("change", () => {
+      if (radio.checked) setStopSizeMode(radio.value);
+    });
+  });
+
   // Left panel collapse toggle
   const collapseBtn = document.getElementById("tool-panel-collapse");
   const toolPanel   = document.getElementById("tool-panel");
@@ -292,109 +300,86 @@ export function initToolPanel() {
     const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
     const internal = stopFeatures.filter(f => !f.properties.context);
 
-    const sum = (col) => internal.reduce((s, f) => s + (+f.properties[col] || 0), 0);
-    const avg = (col) => internal.length ? sum(col) / internal.length : 0;
+    const sum  = (col) => internal.reduce((s, f) => s + (+f.properties[col] || 0), 0);
+    const avg  = (col) => internal.length ? sum(col) / internal.length : 0;
     const fmtK = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
+    const fmtPct = (n) => `${(n * 100).toFixed(0)}%`;
+    const fmtMin = (n) => `${n.toFixed(1)} min`;
 
-    // District headline KPIs
-    const popLow  = Math.round(sum("pop_wa_reach_low")  + sum("pop_el_reach_low")  + sum("pop_ch_reach_low"))  / (internal.length || 1);
-    const popHigh = Math.round(sum("pop_wa_reach_high") + sum("pop_el_reach_high") + sum("pop_ch_reach_high")) / (internal.length || 1);
-    const popRangeEl = document.getElementById("kpi-pop-range");
-    if (popRangeEl) popRangeEl.textContent = `${fmtK(popLow)}–${fmtK(popHigh)}`;
+    // ── Headline row (district or neighbourhood) ──────────────────────────────
+    const source = nbName && NEIGHBOURHOOD_POP[nbName] ? "nb" : "district";
+    const headlineStops = source === "nb"
+      ? internal.filter(f => neighbourhoodForPoint(f.geometry.coordinates) === nbName)
+      : internal;
 
-    const greenDistEl  = document.getElementById("kpi-green-district");
-    const greenLabelEl = document.getElementById("kpi-green-district-label");
-    if (greenDistEl) {
-      if (isBaseline) {
-        greenDistEl.textContent = `${(avg("green_pct_catchment") * 100).toFixed(0)}%`;
-        if (greenLabelEl) greenLabelEl.textContent = "routes through parks";
-      } else {
-        greenDistEl.textContent = `${avg("green_time_working_age").toFixed(1)} min`;
-        if (greenLabelEl) greenLabelEl.textContent = "avg min in green (WA)";
-      }
+    const hsAvg = (col) => headlineStops.length
+      ? headlineStops.reduce((s, f) => s + (+f.properties[col] || 0), 0) / headlineStops.length : 0;
+    const hPopLow  = headlineStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_low  || 0) + (+f.properties.pop_el_reach_low  || 0) + (+f.properties.pop_ch_reach_low  || 0), 0) / (headlineStops.length || 1);
+    const hPopHigh = headlineStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_high || 0) + (+f.properties.pop_el_reach_high || 0) + (+f.properties.pop_ch_reach_high || 0), 0) / (headlineStops.length || 1);
+
+    const popEl    = document.getElementById("pg-headline-pop");
+    const labelEl  = document.getElementById("pg-headline-label");
+    const greenEl  = document.getElementById("pg-headline-green");
+    const gLabelEl = document.getElementById("pg-headline-green-label");
+
+    if (popEl)    popEl.textContent   = `${fmtK(hPopLow)}–${fmtK(hPopHigh)}`;
+    if (labelEl)  labelEl.textContent = source === "nb" ? `people in ${nbName.replace("-kvarteret", "")}` : "people in Nørrebro";
+    if (greenEl) {
+      greenEl.textContent = isBaseline
+        ? fmtPct(hsAvg("green_pct_catchment"))
+        : fmtMin(hsAvg("green_time_working_age"));
     }
+    if (gLabelEl) gLabelEl.textContent = isBaseline ? "routes through parks" : "avg min in green (WA)";
 
-    // Per-group bars
-    const tot = DISTRICT_POP.total;
-    for (const [suffix, field, waField, color] of [
-      ["children",    "children",    "green_time_children",    "#c6dbef"],
-      ["working-age", "working_age", "green_time_working_age", "#2171b5"],
-      ["elderly",     "elderly",     "green_time_elderly",     "#6baed6"],
-    ]) {
-      const share = Math.round((DISTRICT_POP[field] / tot) * 100);
-      const fillEl  = document.getElementById(`bar-${suffix}`);
-      const pctEl   = document.getElementById(`pct-${suffix}`);
-      const greenEl = document.getElementById(`green-ann-${suffix}`);
-      if (fillEl)  { fillEl.style.width = `${share}%`; fillEl.style.background = color; }
-      if (pctEl)   pctEl.textContent = `${share}%`;
-      if (greenEl) {
-        greenEl.textContent = isBaseline
-          ? `${(avg("green_pct_catchment") * 100).toFixed(0)}%`
-          : `${avg(waField).toFixed(1)}m`;
-      }
-    }
-
-    // Stop KPI row
-    const stopRowEl = document.getElementById("kpi-stop-row");
-    if (stopRowEl) {
+    // ── Stop row ─────────────────────────────────────────────────────────────
+    const stopRow = document.getElementById("pg-stop-row");
+    if (stopRow) {
       if (selectedStopId) {
         const feat = internal.find(f => f.properties.stop_id === selectedStopId);
         if (feat) {
           const p = feat.properties;
-          const sPopLow  = (+p.pop_wa_reach_low  || 0) + (+p.pop_el_reach_low  || 0) + (+p.pop_ch_reach_low  || 0);
-          const sPopHigh = (+p.pop_wa_reach_high || 0) + (+p.pop_el_reach_high || 0) + (+p.pop_ch_reach_high || 0);
-          const stopNameEl  = document.getElementById("kpi-stop-name");
-          const stopPopEl   = document.getElementById("kpi-stop-pop");
-          const stopGreenEl = document.getElementById("kpi-stop-green");
-          if (stopNameEl)  stopNameEl.textContent  = p.stop_name || p.stop_id;
-          if (stopPopEl)   stopPopEl.textContent   = `${fmtK(sPopLow)}–${fmtK(sPopHigh)} people`;
+          const sLow  = (+p.pop_wa_reach_low  || 0) + (+p.pop_el_reach_low  || 0) + (+p.pop_ch_reach_low  || 0);
+          const sHigh = (+p.pop_wa_reach_high || 0) + (+p.pop_el_reach_high || 0) + (+p.pop_ch_reach_high || 0);
+          const stopPopEl = document.getElementById("pg-stop-pop");
+          if (stopPopEl) stopPopEl.textContent = `${fmtK(sLow)}–${fmtK(sHigh)}`;
+          const stopNameEl = document.getElementById("pg-stop-name");
+          if (stopNameEl) stopNameEl.textContent = p.stop_name || p.stop_id;
+          const stopGreenEl = document.getElementById("pg-stop-green");
           if (stopGreenEl) stopGreenEl.textContent = isBaseline
-            ? `${(+p.green_pct_catchment * 100 || 0).toFixed(0)}% green`
-            : `${(+p.green_time_working_age || 0).toFixed(1)} min green`;
-          stopRowEl.classList.remove("hidden");
+            ? fmtPct(+p.green_pct_catchment || 0)
+            : fmtMin(+p.green_time_working_age || 0);
+          stopRow.classList.remove("hidden");
         }
       } else {
-        stopRowEl.classList.add("hidden");
+        stopRow.classList.add("hidden");
       }
     }
 
-    // Neighbourhood comparison row
-    const nbRowEl = document.getElementById("kpi-neighbourhood-row");
-    if (nbRowEl) {
-      if (nbName && NEIGHBOURHOOD_POP[nbName]) {
-        const nb = NEIGHBOURHOOD_POP[nbName];
-        const nbStops = internal.filter(f => {
-          const [lng, lat] = f.geometry.coordinates;
-          return neighbourhoodForPoint([lng, lat]) === nbName;
-        });
-        const nbAvg = (col) => nbStops.length
-          ? nbStops.reduce((s, f) => s + (+f.properties[col] || 0), 0) / nbStops.length : 0;
-        const nbPopLow  = nbStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_low  || 0) + (+f.properties.pop_el_reach_low  || 0) + (+f.properties.pop_ch_reach_low  || 0), 0) / (nbStops.length || 1);
-        const nbPopHigh = nbStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_high || 0) + (+f.properties.pop_el_reach_high || 0) + (+f.properties.pop_ch_reach_high || 0), 0) / (nbStops.length || 1);
+    // ── Per-group bars ────────────────────────────────────────────────────────
+    const tot = DISTRICT_POP.total;
+    for (const [suffix, field, waField, lowField, highField] of [
+      ["children",    "children",    "green_time_children",    "pop_ch_reach_low",  "pop_ch_reach_high"],
+      ["working-age", "working_age", "green_time_working_age", "pop_wa_reach_low",  "pop_wa_reach_high"],
+      ["elderly",     "elderly",     "green_time_elderly",     "pop_el_reach_low",  "pop_el_reach_high"],
+    ]) {
+      const share = Math.round((DISTRICT_POP[field] / tot) * 100);
+      const avgLow  = avg(lowField);
+      const avgHigh = avg(highField);
+      const uncPct  = avgLow > 0 ? Math.round(((avgHigh - avgLow) / (2 * ((avgLow + avgHigh) / 2))) * 100) : 0;
 
-        const nbNameEl  = document.getElementById("kpi-nb-name");
-        const nbPopEl   = document.getElementById("kpi-nb-pop");
-        const nbGreenEl = document.getElementById("kpi-nb-green");
-        if (nbNameEl)  nbNameEl.textContent  = nbName.replace("-kvarteret", "");
-        if (nbPopEl)   nbPopEl.textContent   = `${fmtK(nbPopLow)}–${fmtK(nbPopHigh)} people`;
-        if (nbGreenEl) nbGreenEl.textContent = isBaseline
-          ? `${(nbAvg("green_pct_catchment") * 100).toFixed(0)}% green`
-          : `${nbAvg("green_time_working_age").toFixed(1)} min green`;
-        nbRowEl.classList.remove("hidden");
+      const barEl = document.getElementById(`pgbar-${suffix}`);
+      if (barEl) barEl.style.width = `${share}%`;
+      const pctEl = document.getElementById(`pg-pct-${suffix}`);
+      if (pctEl) pctEl.textContent = `${share}%`;
+      const uncEl = document.getElementById(`pg-unc-${suffix}`);
+      if (uncEl) uncEl.textContent = uncPct > 0 ? `± ${uncPct}%` : "";
 
-        for (const [suffix, field] of [
-          ["children", "children"], ["working-age", "working_age"], ["elderly", "elderly"]
-        ]) {
-          const nbShare = Math.round((nb[field] / nb.total) * 100);
-          const tickEl  = document.getElementById(`nb-tick-${suffix}`);
-          if (tickEl) { tickEl.style.left = `${nbShare}%`; tickEl.classList.remove("hidden"); }
-        }
-      } else {
-        nbRowEl.classList.add("hidden");
-        ["children", "working-age", "elderly"].forEach(s =>
-          document.getElementById(`nb-tick-${s}`)?.classList.add("hidden")
-        );
-      }
+      const greenValEl = document.getElementById(`pg-green-${suffix}`);
+      if (greenValEl) greenValEl.textContent = isBaseline
+        ? fmtPct(avg("green_pct_catchment"))
+        : fmtMin(avg(waField));
+      const greenSubEl = document.getElementById(`pg-greenpath-${suffix}`);
+      if (greenSubEl) greenSubEl.textContent = isBaseline ? "routes in parks" : "avg min in green";
     }
   }
 
@@ -410,7 +395,7 @@ export function initToolPanel() {
     _updatePeopleGreen(getStopFeatures(), id, getActiveNeighbourhood());
   });
 
-  document.getElementById("kpi-stop-close")?.addEventListener("click", () => {
+  document.getElementById("pg-stop-close")?.addEventListener("click", () => {
     setSelectedStop(null);
     highlightMapStop(null);
     highlightScatterStop(null);
@@ -444,7 +429,7 @@ export function initToolPanel() {
       ) || 280;
       handle.classList.add("dragging");
       const onMove = (ev) => {
-        const newW = Math.max(260, Math.min(520, _startW + (_startX - ev.clientX)));
+        const newW = Math.max(320, Math.min(520, _startW + (_startX - ev.clientX)));
         document.documentElement.style.setProperty("--chart-panel-w", `${newW}px`);
         resizeMap();
       };
