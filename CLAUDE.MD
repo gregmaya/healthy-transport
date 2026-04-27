@@ -272,6 +272,8 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 2. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).
 3. **Tasks 1–3 complete** — group-button clicks trigger `_updatePeopleGreen()` with active group readable (Task 1); headline now shows census count for selected demographic group keyed to `NEIGHBOURHOOD_POP` or `DISTRICT_POP` (Task 2); green time in Health Score mode uses population-weighted average across all three age groups instead of hardcoded working-age (Task 3).
 4. **Task 4(c) complete** — stop-detail row (`#pg-stop-row`) now has subtle grey background when visible (added `.pg-row--stop:not(.hidden)` CSS rule in style.css).
+5. **Task 5(d) complete** — single "Population" / "Time in Green" column headers added above group rows via `.pg-groups-header`; per-row subtext cleared.
+6. **Task 6 complete** — each per-group bar row now shows a raw census count (`pg-raw-*`) below the bar and a thin district-level marker line (`pg-dist-marker-*`) inside the bar track that appears only when a neighbourhood is selected, positioned at the district-wide share for comparison. `.pg-group-bar-track` changed from `overflow: hidden` to `overflow: visible` with `position: relative` to allow the absolute-positioned marker to render correctly.
 
 ---
 

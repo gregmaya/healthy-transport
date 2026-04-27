@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-27 (Task 5(d): single Time in Green column header)*
+*Last updated: 2026-04-27 (Task 6: raw census count + district marker on group bars)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).

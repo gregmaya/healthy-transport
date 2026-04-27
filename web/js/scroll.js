@@ -374,13 +374,21 @@ export function initToolPanel() {
     }
 
     // ── Per-group bars ────────────────────────────────────────────────────────
-    const tot = DISTRICT_POP.total;
+    const districtTot = DISTRICT_POP.total;
+    const nbPop = source === "nb" && NEIGHBOURHOOD_POP[nbName] ? NEIGHBOURHOOD_POP[nbName] : null;
+
     for (const [suffix, field, waField, lowField, highField] of [
       ["children",    "children",    "green_time_children",    "pop_ch_reach_low",  "pop_ch_reach_high"],
       ["working-age", "working_age", "green_time_working_age", "pop_wa_reach_low",  "pop_wa_reach_high"],
       ["elderly",     "elderly",     "green_time_elderly",     "pop_el_reach_low",  "pop_el_reach_high"],
     ]) {
-      const share = Math.round((DISTRICT_POP[field] / tot) * 100);
+      const srcPop   = nbPop ?? DISTRICT_POP;
+      const srcTotal = srcPop.total;
+      const rawCount = srcPop[field] ?? 0;
+      const share    = Math.round((rawCount / srcTotal) * 100);
+
+      const districtShare = Math.round((DISTRICT_POP[field] / districtTot) * 100);
+
       const avgLow  = avg(lowField);
       const avgHigh = avg(highField);
       const uncPct  = avgLow > 0 ? Math.round(((avgHigh - avgLow) / (2 * ((avgLow + avgHigh) / 2))) * 100) : 0;
@@ -391,6 +399,19 @@ export function initToolPanel() {
       if (pctEl) pctEl.textContent = `${share}%`;
       const uncEl = document.getElementById(`pg-unc-${suffix}`);
       if (uncEl) uncEl.textContent = uncPct > 0 ? `± ${uncPct}%` : "";
+
+      const rawEl = document.getElementById(`pg-raw-${suffix}`);
+      if (rawEl) rawEl.textContent = rawCount.toLocaleString("en-DK");
+
+      const markerEl = document.getElementById(`pg-dist-marker-${suffix}`);
+      if (markerEl) {
+        if (nbPop) {
+          markerEl.style.left = `${districtShare}%`;
+          markerEl.classList.remove("hidden");
+        } else {
+          markerEl.classList.add("hidden");
+        }
+      }
 
       const greenValEl = document.getElementById(`pg-green-${suffix}`);
       if (greenValEl) greenValEl.textContent = isBaseline

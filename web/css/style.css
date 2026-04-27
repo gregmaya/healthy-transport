@@ -1218,11 +1218,12 @@ body.is-interactive #chart-resize-handle.dragging {
 }
 
 .pg-group-bar-track {
+  position: relative;
   flex: 1;
   height: 5px;
   background: var(--border-subtle);
   border-radius: 3px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pg-group-bar-fill {
@@ -1256,6 +1257,27 @@ body.is-interactive #chart-resize-handle.dragging {
   font-size: 0.63rem;
   color: var(--muted);
 }
+
+.pg-group-raw {
+  font-size: 0.7rem;
+  color: var(--muted, #6b7280);
+  margin-top: 1px;
+  margin-bottom: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-group-district-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text, #111827);
+  opacity: 0.35;
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.pg-group-district-marker.hidden { display: none; }
 
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 
