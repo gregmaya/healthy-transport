@@ -241,6 +241,7 @@ export function initToolPanel() {
       btn.classList.add("active");
       setActiveGroup(btn.dataset.group);
       updateScatterGroup(btn.dataset.group);
+      _updatePeopleGreen(getStopFeatures(), getSelectedStop(), getActiveNeighbourhood());
     });
   });
 
@@ -297,6 +298,7 @@ export function initToolPanel() {
 
   function _updatePeopleGreen(stopFeatures, selectedStopId, nbName) {
     if (!stopFeatures) return;
+    const activeGroup = document.querySelector(".group-btn.active")?.dataset.group || "aggregate";
     const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
     const internal = stopFeatures.filter(f => !f.properties.context);
 
