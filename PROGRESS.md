@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-27 (Task 6: raw census count + district marker on group bars)*
+*Last updated: 2026-04-27 (Task 7: stop-detail row responds to active demographic group)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -59,6 +59,8 @@ Ordered working list. Delete items when done.
 ~~14. **Task 4(c): grey background on stop-detail row**~~ ✅ DONE — Added `.pg-row--stop:not(.hidden)` rule in style.css with subtle grey background (#f3f4f6), rounded corners, and padding to visually distinguish the stop-detail panel row when it appears on stop click.
 
 ~~15. **Task 5(d): single Time in Green column header**~~ ✅ DONE — Added `.pg-groups-header` row above group rows with "Population" and "Time in Green" labels styled as monospace uppercase tags; cleared per-row subtext by setting `greenSubEl.textContent = ""` in `_updatePeopleGreen`.
+
+~~16. **Task 7: stop-detail row responds to active demographic group**~~ ✅ DONE — Stop-detail row (`#pg-stop-row`) now uses group-specific population field (`pop_ch_reach_mid` / `pop_wa_reach_mid` / `pop_el_reach_mid`) instead of summing all three groups' low–high ranges. Green time uses group-specific field (`green_time_children` / `green_time_working_age` / `green_time_elderly`) or population-weighted average for aggregate mode. Display format changed from `fmtK()` range to `toLocaleString("en-DK")` integer. Implemented in scroll.js lines 352–408.
 
 ---
 

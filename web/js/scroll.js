@@ -350,22 +350,56 @@ export function initToolPanel() {
     if (gLabelEl) gLabelEl.textContent = isBaseline ? "routes through parks" : "avg min in green";
 
     // ── Stop row ─────────────────────────────────────────────────────────────
+    const STOP_POP_FIELD = {
+      children:    "pop_ch_reach_mid",
+      working_age: "pop_wa_reach_mid",
+      elderly:     "pop_el_reach_mid",
+      aggregate:   null,
+    };
+    const STOP_GREEN_FIELD = {
+      children:    "green_time_children",
+      working_age: "green_time_working_age",
+      elderly:     "green_time_elderly",
+      aggregate:   null,
+    };
+
     const stopRow = document.getElementById("pg-stop-row");
     if (stopRow) {
       if (selectedStopId) {
         const feat = internal.find(f => f.properties.stop_id === selectedStopId);
         if (feat) {
           const p = feat.properties;
-          const sLow  = (+p.pop_wa_reach_low  || 0) + (+p.pop_el_reach_low  || 0) + (+p.pop_ch_reach_low  || 0);
-          const sHigh = (+p.pop_wa_reach_high || 0) + (+p.pop_el_reach_high || 0) + (+p.pop_ch_reach_high || 0);
+
+          let sPopVal;
+          if (activeGroup === "aggregate") {
+            sPopVal = (+p.pop_wa_reach_mid || 0) + (+p.pop_el_reach_mid || 0) + (+p.pop_ch_reach_mid || 0);
+          } else {
+            sPopVal = +p[STOP_POP_FIELD[activeGroup]] || 0;
+          }
+
+          let sGreenVal;
+          if (isBaseline) {
+            sGreenVal = fmtPct(+p.green_pct_catchment || 0);
+          } else if (activeGroup === "aggregate") {
+            const waPop = +p.pop_wa_reach_mid || 0;
+            const elPop = +p.pop_el_reach_mid || 0;
+            const chPop = +p.pop_ch_reach_mid || 0;
+            const tot   = waPop + elPop + chPop || 1;
+            sGreenVal = fmtMin(
+              (waPop * (+p.green_time_working_age || 0) +
+               elPop * (+p.green_time_elderly     || 0) +
+               chPop * (+p.green_time_children    || 0)) / tot
+            );
+          } else {
+            sGreenVal = fmtMin(+p[STOP_GREEN_FIELD[activeGroup]] || 0);
+          }
+
           const stopPopEl = document.getElementById("pg-stop-pop");
-          if (stopPopEl) stopPopEl.textContent = `${fmtK(sLow)}–${fmtK(sHigh)}`;
+          if (stopPopEl) stopPopEl.textContent = sPopVal.toLocaleString("en-DK");
           const stopNameEl = document.getElementById("pg-stop-name");
           if (stopNameEl) stopNameEl.textContent = p.stop_name || p.stop_id;
           const stopGreenEl = document.getElementById("pg-stop-green");
-          if (stopGreenEl) stopGreenEl.textContent = isBaseline
-            ? fmtPct(+p.green_pct_catchment || 0)
-            : fmtMin(+p.green_time_working_age || 0);
+          if (stopGreenEl) stopGreenEl.textContent = sGreenVal;
           stopRow.classList.remove("hidden");
         }
       } else {
