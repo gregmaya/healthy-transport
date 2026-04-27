@@ -1173,6 +1173,21 @@ body.is-interactive #chart-resize-handle.dragging {
   line-height: 1;
 }
 
+.pg-groups-header {
+  display: flex;
+  padding: 0 0 4px 0;
+  border-bottom: 1px solid var(--border-subtle, #f3f4f6);
+  margin-bottom: 4px;
+}
+
+.pg-col-header {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #6b7280);
+}
+
 .pg-groups {
   margin-top: 4px;
 }

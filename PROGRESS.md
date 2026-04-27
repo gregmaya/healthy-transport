@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-27 (Task 4(c): grey background on stop-detail row)*
+*Last updated: 2026-04-27 (Task 5(d): single Time in Green column header)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -57,6 +57,8 @@ Ordered working list. Delete items when done.
 ~~13. **Task 3: green time uses population-weighted average**~~ ✅ DONE — Baseline mode still shows "routes through parks" (%), Health Score mode now shows `(waPop × green_time_working_age + elPop × green_time_elderly + chPop × green_time_children) / totalReach` — population-weighted mean across all three groups, not hardcoded working-age. Label changed from "avg min in green (WA)" to "avg min in green".
 
 ~~14. **Task 4(c): grey background on stop-detail row**~~ ✅ DONE — Added `.pg-row--stop:not(.hidden)` rule in style.css with subtle grey background (#f3f4f6), rounded corners, and padding to visually distinguish the stop-detail panel row when it appears on stop click.
+
+~~15. **Task 5(d): single Time in Green column header**~~ ✅ DONE — Added `.pg-groups-header` row above group rows with "Population" and "Time in Green" labels styled as monospace uppercase tags; cleared per-row subtext by setting `greenSubEl.textContent = ""` in `_updatePeopleGreen`.
 
 ---
 

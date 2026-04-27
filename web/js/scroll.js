@@ -397,7 +397,7 @@ export function initToolPanel() {
         ? fmtPct(avg("green_pct_catchment"))
         : fmtMin(avg(waField));
       const greenSubEl = document.getElementById(`pg-greenpath-${suffix}`);
-      if (greenSubEl) greenSubEl.textContent = isBaseline ? "routes in parks" : "avg min in green";
+      if (greenSubEl) greenSubEl.textContent = "";
     }
   }
 
