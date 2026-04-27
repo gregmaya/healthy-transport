@@ -271,6 +271,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 1. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b).
 2. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).
 3. **Tasks 1–3 complete** — group-button clicks trigger `_updatePeopleGreen()` with active group readable (Task 1); headline now shows census count for selected demographic group keyed to `NEIGHBOURHOOD_POP` or `DISTRICT_POP` (Task 2); green time in Health Score mode uses population-weighted average across all three age groups instead of hardcoded working-age (Task 3).
+4. **Task 4(c) complete** — stop-detail row (`#pg-stop-row`) now has subtle grey background when visible (added `.pg-row--stop:not(.hidden)` CSS rule in style.css).
 
 ---
 

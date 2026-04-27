@@ -1120,6 +1120,13 @@ body.is-interactive #chart-resize-handle.dragging {
 
 .pg-row.hidden { display: none; }
 
+.pg-row--stop:not(.hidden) {
+  background: var(--border-subtle, #f3f4f6);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin: 4px 0;
+}
+
 .pg-col-people,
 .pg-col-green {
   padding: 0 4px;
