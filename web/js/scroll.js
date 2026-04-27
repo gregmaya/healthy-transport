@@ -316,22 +316,38 @@ export function initToolPanel() {
 
     const hsAvg = (col) => headlineStops.length
       ? headlineStops.reduce((s, f) => s + (+f.properties[col] || 0), 0) / headlineStops.length : 0;
-    const hPopLow  = headlineStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_low  || 0) + (+f.properties.pop_el_reach_low  || 0) + (+f.properties.pop_ch_reach_low  || 0), 0) / (headlineStops.length || 1);
-    const hPopHigh = headlineStops.reduce((s, f) => s + (+f.properties.pop_wa_reach_high || 0) + (+f.properties.pop_el_reach_high || 0) + (+f.properties.pop_ch_reach_high || 0), 0) / (headlineStops.length || 1);
+
+    const popSource = source === "nb" && NEIGHBOURHOOD_POP[nbName] ? NEIGHBOURHOOD_POP[nbName] : DISTRICT_POP;
+    const GROUP_POP_KEY = { children: "children", working_age: "working_age", elderly: "elderly", aggregate: "total" };
+    const hPopVal = popSource[GROUP_POP_KEY[activeGroup]] ?? popSource.total;
 
     const popEl    = document.getElementById("pg-headline-pop");
     const labelEl  = document.getElementById("pg-headline-label");
     const greenEl  = document.getElementById("pg-headline-green");
     const gLabelEl = document.getElementById("pg-headline-green-label");
 
-    if (popEl)    popEl.textContent   = `${fmtK(hPopLow)}–${fmtK(hPopHigh)}`;
-    if (labelEl)  labelEl.textContent = source === "nb" ? `people in ${nbName.replace("-kvarteret", "")}` : "people in Nørrebro";
+    if (popEl)    popEl.textContent   = hPopVal.toLocaleString("en-DK");
+    const GROUP_LABEL = { children: "children", working_age: "working-age adults", elderly: "elderly residents", aggregate: "residents" };
+    if (labelEl)  labelEl.textContent = source === "nb"
+      ? `${GROUP_LABEL[activeGroup] || "residents"} in ${nbName.replace("-kvarteret", "")}`
+      : `${GROUP_LABEL[activeGroup] || "residents"} in Nørrebro`;
     if (greenEl) {
-      greenEl.textContent = isBaseline
-        ? fmtPct(hsAvg("green_pct_catchment"))
-        : fmtMin(hsAvg("green_time_working_age"));
+      if (isBaseline) {
+        greenEl.textContent = fmtPct(hsAvg("green_pct_catchment"));
+      } else {
+        const waPop = hsAvg("pop_wa_reach_mid");
+        const elPop = hsAvg("pop_el_reach_mid");
+        const chPop = hsAvg("pop_ch_reach_mid");
+        const totalReach = waPop + elPop + chPop || 1;
+        const weightedGreen = (
+          waPop * hsAvg("green_time_working_age") +
+          elPop * hsAvg("green_time_elderly") +
+          chPop * hsAvg("green_time_children")
+        ) / totalReach;
+        greenEl.textContent = fmtMin(weightedGreen);
+      }
     }
-    if (gLabelEl) gLabelEl.textContent = isBaseline ? "routes through parks" : "avg min in green (WA)";
+    if (gLabelEl) gLabelEl.textContent = isBaseline ? "routes through parks" : "avg min in green";
 
     // ── Stop row ─────────────────────────────────────────────────────────────
     const stopRow = document.getElementById("pg-stop-row");
