@@ -449,8 +449,8 @@ export function initToolPanel() {
 
       const greenValEl = document.getElementById(`pg-green-${suffix}`);
       if (greenValEl) greenValEl.textContent = isBaseline
-        ? fmtPct(avg("green_pct_catchment"))
-        : fmtMin(avg(waField));
+        ? fmtPct(hsAvg("green_pct_catchment"))
+        : fmtMin(hsAvg(waField));
       const greenSubEl = document.getElementById(`pg-greenpath-${suffix}`);
       if (greenSubEl) greenSubEl.textContent = "";
     }

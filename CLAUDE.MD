@@ -275,6 +275,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 5. **Task 5(d) complete** — single "Population" / "Time in Green" column headers added above group rows via `.pg-groups-header`; per-row subtext cleared.
 6. **Task 6 complete** — each per-group bar row now shows a raw census count (`pg-raw-*`) below the bar and a thin district-level marker line (`pg-dist-marker-*`) inside the bar track that appears only when a neighbourhood is selected, positioned at the district-wide share for comparison. `.pg-group-bar-track` changed from `overflow: hidden` to `overflow: visible` with `position: relative` to allow the absolute-positioned marker to render correctly.
 7. **Task 7 complete** — stop-detail row (`#pg-stop-row`) now responds to the active demographic group: uses group-specific population field (`pop_ch_reach_mid` / `pop_wa_reach_mid` / `pop_el_reach_mid`) instead of summing all three groups' low–high ranges; green time uses group-specific field (`green_time_children` / `green_time_working_age` / `green_time_elderly`) or population-weighted average for aggregate mode; display format changed from `fmtK()` range to `toLocaleString("en-DK")` integer.
+8. **Bug fix** — per-group green column values (`pg-green-*`) now use `hsAvg()` (neighbourhood-filtered stops) instead of `avg()` (all internal stops), so they stay consistent with the headline when a neighbourhood is selected.
 
 ---
 

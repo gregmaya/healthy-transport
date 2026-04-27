@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-27 (Task 7: stop-detail row responds to active demographic group)*
+*Last updated: 2026-04-27 (fix: per-group green values now use neighbourhood-filtered hsAvg)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
