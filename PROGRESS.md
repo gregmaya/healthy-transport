@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-27 (fix: column header moved to top; ±% removed from bars; time in M:SS format)*
+*Last updated: 2026-04-28 (docs: README rewritten to reflect current web app state)*
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).

@@ -279,6 +279,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 9. **Column header moved to top** — "Population / Time in Green" header now sits above the headline numbers, not just the group rows.
 10. **Catchment count ± range** — `pg-raw-*` now shows avg stop catchment reach per group (`pop_*_reach_mid` average ± half-range from low/high), replacing the census total; `±%` removed from next to the percentage bars.
 11. **Time format M:SS'** — `fmtMin` now outputs `1:30'` instead of `1.5 min`.
+12. **README rewritten** — reflects current web app architecture, scoring modes, People+Green panel, and pipeline; see [`README.md`](README.md).
 
 ---
 
