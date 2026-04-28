@@ -245,10 +245,14 @@ export function initToolPanel() {
     });
   });
 
-  // Show stops toggle
+  // Show stops toggle — also shows/hides the Stop size section
   const stopsChk = document.getElementById("toggle-stops");
+  const stopSizeSection = document.getElementById("stop-size-section");
   if (stopsChk) {
-    stopsChk.addEventListener("change", () => toggleStops(stopsChk.checked));
+    stopsChk.addEventListener("change", () => {
+      toggleStops(stopsChk.checked);
+      if (stopSizeSection) stopSizeSection.classList.toggle("hidden", !stopsChk.checked);
+    });
   }
 
   // Demographics toggle
@@ -394,8 +398,22 @@ export function initToolPanel() {
             sGreenVal = fmtMin(+p[STOP_GREEN_FIELD[activeGroup]] || 0);
           }
 
+          // Stop row uses per-stop interpolated population → show ± confidence band
           const stopPopEl = document.getElementById("pg-stop-pop");
-          if (stopPopEl) stopPopEl.textContent = sPopVal.toLocaleString("en-DK");
+          if (stopPopEl) {
+            if (activeGroup === "aggregate") {
+              stopPopEl.textContent = Math.round(sPopVal).toLocaleString("en-DK");
+            } else {
+              const lowField  = { children: "pop_ch_reach_low",  working_age: "pop_wa_reach_low",  elderly: "pop_el_reach_low"  }[activeGroup];
+              const highField = { children: "pop_ch_reach_high", working_age: "pop_wa_reach_high", elderly: "pop_el_reach_high" }[activeGroup];
+              const lo = +p[lowField]  || 0;
+              const hi = +p[highField] || 0;
+              const half = Math.round((hi - lo) / 2);
+              stopPopEl.textContent = half > 0
+                ? `${Math.round(sPopVal).toLocaleString("en-DK")} ± ${half.toLocaleString("en-DK")}`
+                : Math.round(sPopVal).toLocaleString("en-DK");
+            }
+          }
           const stopNameEl = document.getElementById("pg-stop-name");
           if (stopNameEl) stopNameEl.textContent = p.stop_name || p.stop_id;
           const stopGreenEl = document.getElementById("pg-stop-green");
@@ -423,20 +441,14 @@ export function initToolPanel() {
 
       const districtShare = Math.round((DISTRICT_POP[field] / districtTot) * 100);
 
-      const avgLow  = avg(lowField);
-      const avgHigh = avg(highField);
-      const avgMid  = avg(midField);
-      const halfRange = Math.round((avgHigh - avgLow) / 2);
-
       const barEl = document.getElementById(`pgbar-${suffix}`);
       if (barEl) barEl.style.width = `${share}%`;
       const pctEl = document.getElementById(`pg-pct-${suffix}`);
       if (pctEl) pctEl.textContent = `${share}%`;
 
+      // Area bars show the census headcount — no error range (this is a fixed census value)
       const rawEl = document.getElementById(`pg-raw-${suffix}`);
-      if (rawEl) rawEl.textContent = halfRange > 0
-        ? `${Math.round(avgMid).toLocaleString("en-DK")} ± ${halfRange.toLocaleString("en-DK")}`
-        : Math.round(avgMid).toLocaleString("en-DK");
+      if (rawEl) rawEl.textContent = Math.round(rawCount).toLocaleString("en-DK");
 
       const markerEl = document.getElementById(`pg-dist-marker-${suffix}`);
       if (markerEl) {

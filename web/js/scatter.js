@@ -5,7 +5,7 @@
  * Colour: selected group's contextual score (matches Y axis)
  */
 
-import { getRampDomain } from "./map.js";
+import { getRampDomain, getCatchRampDomain } from "./map.js";
 
 export const BANDS = [
   { lo: 0,    hi: 0.20,     label: "Low benefit", textColor: "#c94e00" },
@@ -51,11 +51,15 @@ function scoreColor(val) {
   return "rgb(0,78,152)";
 }
 
-/** Normalize a raw score value to [0,1] using the map's dynamic domain. */
-function _normalize(val) {
-  const { lo, hi } = getRampDomain();
+/** Normalize a raw score value to [0,1] using the appropriate domain for the current mode. */
+function _normalize(val, isBaseline) {
+  const { lo, hi } = isBaseline ? getCatchRampDomain() : getRampDomain();
   if (lo == null || hi === lo) return val;
   return Math.max(0, Math.min(1, (val - lo) / (hi - lo)));
+}
+
+function _isBaseline() {
+  return document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
 }
 
 const NS = "http://www.w3.org/2000/svg";
@@ -159,7 +163,7 @@ function drawDistribution(group) {
   const isBaseline = document.querySelector(".mode-btn.active")?.dataset.mode === "baseline";
   const scoreKey   = isBaseline ? "score_catchment" : (GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate);
 
-  const allVals  = _features.map(f => _normalize(+(f.properties[scoreKey]) || 0));
+  const allVals  = _features.map(f => _normalize(+(f.properties[scoreKey]) || 0, isBaseline));
   const n        = allVals.length;
 
   // Nørrebro-wide band percentages
@@ -171,7 +175,7 @@ function drawDistribution(group) {
   if (_neighbourStopIds?.size) {
     const nbVals = _features
       .filter(f => _neighbourStopIds.has(String(f.properties.stop_id)))
-      .map(f => _normalize(+(f.properties[scoreKey]) || 0));
+      .map(f => _normalize(+(f.properties[scoreKey]) || 0, isBaseline));
     const nbN = nbVals.length;
     const nbCounts = BANDS.map(b => nbVals.filter(v => v >= b.lo && v < (b.hi === Infinity ? 2 : b.hi)).length);
     nbPcts = nbCounts.map(c => nbN > 0 ? Math.round((c / nbN) * 100) : 0);
@@ -201,12 +205,15 @@ function drawScatter(group) {
 
   _dotElements.clear();
 
+  const isBaseline = _isBaseline();
   const yKey   = GROUP_Y_FIELD[group] || GROUP_Y_FIELD.aggregate;
   const yLabel = GROUP_LABEL[group]   || "All groups";
   const props  = _features.map(f => f.properties);
   const xVals   = props.map(p => +(p["score_catchment"]) || 0);
   const yVals   = props.map(p => +(p[yKey]) || 0);
   const aggVals = props.map(p => +(p["score_health_combined"]) || 0); // z-order only
+  // In catchment mode, color dots by catchment score to match the map ramp.
+  const colorVals = isBaseline ? xVals : yVals;
 
   const px = v => ML + v * PW;
   const py = v => MT + PH * (1 - v);
@@ -256,7 +263,7 @@ function drawScatter(group) {
     const circle = el("circle", {
       cx: px(xVals[i]), cy: py(yVals[i]),
       r: isSelected ? 4.5 : 2.2,
-      fill: scoreColor(_normalize(yVals[i])),
+      fill: scoreColor(_normalize(colorVals[i], isBaseline)),
       "fill-opacity": 0.75,
       stroke: isSelected ? "#ffffff" : "none",
       "stroke-width": isSelected ? 1.5 : 0,
@@ -302,7 +309,8 @@ export function updateScatterGroup(group) {
   drawDistribution(group);
 }
 
-/** Re-draw distribution when score mode changes (baseline ↔ contextual). */
+/** Re-draw scatter and distribution when score mode changes (baseline ↔ contextual). */
 export function updateScatterMode() {
+  drawScatter(_currentGroup);
   drawDistribution(_currentGroup);
 }

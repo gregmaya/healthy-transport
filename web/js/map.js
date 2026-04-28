@@ -127,19 +127,27 @@ function _addLayers() {
   });
 
   // Park polygons — hidden initially (toggled by overlay checkbox).
+  // Vandflader (water bodies) rendered in blue; all other park types in green.
   map.addLayer({
     id: "parks-fill",
     type: "fill",
     source: "parks-src",
     layout: { visibility: "none" },
-    paint: { "fill-color": "#4caf50", "fill-opacity": 0.25 },
+    paint: {
+      "fill-color": ["match", ["get", "park_type"], "Vandflader", "#b3d4f5", "#4caf50"],
+      "fill-opacity": ["match", ["get", "park_type"], "Vandflader", 0.45, 0.25],
+    },
   });
   map.addLayer({
     id: "parks-line",
     type: "line",
     source: "parks-src",
     layout: { visibility: "none" },
-    paint: { "line-color": "#2e7d32", "line-width": 1, "line-opacity": 0.6 },
+    paint: {
+      "line-color": ["match", ["get", "park_type"], "Vandflader", "#5a9fd4", "#2e7d32"],
+      "line-width": 1,
+      "line-opacity": 0.6,
+    },
   });
 
   // Demographics heatmap — hidden initially (toggled by overlay checkbox).
@@ -293,16 +301,100 @@ const _GROUP_LABEL = {
 
 const SEG_LAYERS = ["segments-aggregate", "segments-working_age", "segments-elderly", "segments-children"];
 
+const _PG_GROUPS = [
+  { key: "children",    label: "Children",    color: "#81c784",
+    popMid: "pop_ch_reach_mid", popLow: "pop_ch_reach_low", popHigh: "pop_ch_reach_high",
+    scoreField: "score_health_children",    greenField: "green_time_children"    },
+  { key: "working_age", label: "Working-age", color: "#4caf50",
+    popMid: "pop_wa_reach_mid", popLow: "pop_wa_reach_low", popHigh: "pop_wa_reach_high",
+    scoreField: "score_health_working_age", greenField: "green_time_working_age" },
+  { key: "elderly",     label: "Elderly",     color: "#2e7d32",
+    popMid: "pop_el_reach_mid", popLow: "pop_el_reach_low", popHigh: "pop_el_reach_high",
+    scoreField: "score_health_elderly",     greenField: "green_time_elderly"     },
+];
+
+function _fmtMin(n) {
+  n = +n || 0;
+  const m = Math.floor(n);
+  const s = Math.round((n - m) * 60);
+  return `${m}:${String(s).padStart(2, "0")}'`;
+}
+
+/**
+ * Build the mini People+Green rows for a segment or stop popup.
+ * isStop: true → bars use actual pop_*_reach_mid with ±confidence; false → health scores.
+ */
+function _buildMiniPG(p, isStop) {
+  const isBaseline = _activeMode === "baseline";
+
+  const barVals = _PG_GROUPS.map(g => isStop ? (+(p[g.popMid]) || 0) : (+(p[g.scoreField]) || 0));
+  const maxBar  = Math.max(...barVals, 1);
+
+  const colLabel = isStop ? "People in catchment" : "Per-group benefit";
+  const greenLabel = isBaseline && p.green_pct_catchment != null
+    ? `${(+(p.green_pct_catchment) * 100).toFixed(1)}% green`
+    : "Green";
+
+  const rows = _PG_GROUPS.map((g, i) => {
+    const barPct = Math.round((barVals[i] / maxBar) * 100);
+
+    let valStr;
+    if (isStop) {
+      const mid  = +(p[g.popMid])  || 0;
+      const lo   = +(p[g.popLow])  || 0;
+      const hi   = +(p[g.popHigh]) || 0;
+      const half = Math.round((hi - lo) / 2);
+      valStr = half > 0
+        ? `${Math.round(mid).toLocaleString("en-DK")}<span class="popup-pg-band"> ±${half.toLocaleString("en-DK")}</span>`
+        : Math.round(mid).toLocaleString("en-DK");
+    } else {
+      valStr = barVals[i] > 0 ? barVals[i].toFixed(3) : "—";
+    }
+
+    const greenVal = p[g.greenField] != null ? _fmtMin(+p[g.greenField]) : "—";
+
+    return `
+      <div class="popup-pg-row">
+        <span class="popup-pg-label" style="color:${g.color}">${g.label}</span>
+        <div class="popup-pg-bar-track">
+          <div class="popup-pg-bar-fill" style="width:${barPct}%;background:${g.color}"></div>
+        </div>
+        <span class="popup-pg-count">${valStr}</span>
+        <span class="popup-pg-green-val">${greenVal}</span>
+      </div>`;
+  }).join("");
+
+  return `
+    <div class="popup-pg-mini">
+      <div class="popup-pg-col-header"><span>${colLabel}</span><span>${greenLabel}</span></div>
+      ${rows}
+    </div>`;
+}
+
+/** Shared HTML header for both segment and stop popups. */
+function _buildPopupHeader(title, subtitle, band, modeName, rawScore) {
+  const scoreStr = rawScore != null ? (+rawScore).toFixed(3) : "—";
+  return `
+    <div class="popup-header-row">
+      <div class="popup-header-title">${title}</div>
+      <div class="popup-category" style="color:${band.color}">${band.label}</div>
+    </div>
+    ${subtitle ? `<div class="popup-type-label">${subtitle}</div>` : ""}
+    <div class="popup-score-line">
+      <span class="popup-score-mode">${modeName}</span>
+      <span class="popup-score-value">${scoreStr}</span>
+    </div>
+    <hr class="popup-hr">`;
+}
+
 function _addPopups() {
   // ── Segment hover/click popup ──────────────────────────────────────────────
-  const _segPopup = new maplibregl.Popup({ maxWidth: "220px", closeButton: false, closeOnClick: false });
+  const _segPopup = new maplibregl.Popup({ maxWidth: "270px", closeButton: false, closeOnClick: false });
 
   SEG_LAYERS.forEach(layerId => {
     map.on("mouseenter", layerId, (e) => {
       map.getCanvas().style.cursor = "pointer";
       const p = e.features[0].properties;
-      const dec = (v) => (v != null && !isNaN(+v) ? (+v).toFixed(3) : "—");
-
       const isBaseline = _activeMode === "baseline";
       const activeField = isBaseline
         ? "score_catchment"
@@ -316,29 +408,12 @@ function _addPopups() {
       const band = _getBand(normScore);
       const modeName = isBaseline ? "Catchment Score" : "Health Score";
 
-      const groupRows = isBaseline ? "" : `
-        <hr class="popup-hr">
-        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_health_working_age)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_health_elderly)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_health_children)}</span></div>`;
-
-      const greenRow = isBaseline
-        ? (p.green_pct_catchment != null
-            ? `<div class="popup-score-row popup-score-sub" style="color:#2e7d32"><span>Green paths</span><span>${(+p.green_pct_catchment * 100).toFixed(1)}%</span></div>`
-            : "")
-        : (p.green_time_working_age != null
-            ? `<div class="popup-score-row popup-score-sub" style="color:#2e7d32"><span>In green (WA / El / Ch)</span><span>${(+p.green_time_working_age).toFixed(1)} / ${(+p.green_time_elderly).toFixed(1)} / ${(+p.green_time_children).toFixed(1)} min</span></div>`
-            : "");
-
       _segPopup
         .setLngLat(e.lngLat)
-        .setHTML(`
-          <div style="font-size:0.78em;color:#666;margin-bottom:4px">Bus-route segment</div>
-          <div class="popup-score-row"><span>${modeName}</span><span>${dec(rawScore)}</span></div>
-          <div class="popup-category" style="color:${band.color}">${band.label}</div>
-          ${groupRows}
-          ${greenRow}
-        `)
+        .setHTML(
+          _buildPopupHeader("Bus-route segment", null, band, modeName, rawScore) +
+          _buildMiniPG(p, false)
+        )
         .addTo(map);
     });
 
@@ -359,8 +434,6 @@ function _addPopups() {
     highlightMapStop(p.stop_id);
     if (_stopSelectCallback) _stopSelectCallback(p.stop_id);
 
-    const dec = (v) => (v != null && !isNaN(+v) ? (+v).toFixed(2) : "—");
-
     // Use active group + mode to determine the category label
     const scoreField = _activeMode === "baseline"
       ? "score_catchment"
@@ -375,22 +448,13 @@ function _addPopups() {
     const band = _getBand(normScore);
     const modeName = isBaselineStop ? "Catchment Score" : "Health Score";
 
-    new maplibregl.Popup({ maxWidth: "250px" })
+    const subtitle = p.route_names ? `Routes: ${p.route_names}` : null;
+    new maplibregl.Popup({ maxWidth: "270px" })
       .setLngLat(e.lngLat)
-      .setHTML(`
-        <strong>${p.stop_name || "Bus stop"}</strong>
-        ${p.route_names ? `<div style="font-size:0.78em;color:#666;margin:2px 0">Routes: ${p.route_names}</div>` : ""}
-        <div class="popup-category" style="color:${band.color}">${band.label}</div>
-        <div class="popup-mode">(${modeName} mode)</div>
-        ${p.score_health_combined != null ? `
-        <hr class="popup-hr">
-        <div class="popup-score-row"><span>Combined</span><span>${dec(p.score_health_combined)}</span></div>
-        <hr class="popup-hr">
-        <div class="popup-score-row popup-score-sub"><span>Working-age</span><span>${dec(p.score_health_working_age)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Elderly</span><span>${dec(p.score_health_elderly)}</span></div>
-        <div class="popup-score-row popup-score-sub"><span>Children</span><span>${dec(p.score_health_children)}</span></div>
-        ` : ""}
-      `)
+      .setHTML(
+        _buildPopupHeader(`<strong>${p.stop_name || "Bus stop"}</strong>`, subtitle, band, modeName, rawScore) +
+        _buildMiniPG(p, true)
+      )
       .addTo(map);
   });
   map.on("mouseenter", "stops-layer", () => { map.getCanvas().style.cursor = "pointer"; });
@@ -721,8 +785,11 @@ function _updateLegend() {
 
 // ── Cross-component API ───────────────────────────────────────────────────────
 
-/** Returns the data-driven ramp domain so scatter.js can use identical colors. */
+/** Returns the health-score ramp domain so scatter.js can use identical colors. */
 export function getRampDomain() { return { lo: _rampLo, hi: _rampHi }; }
+
+/** Returns the catchment-score ramp domain for use in catchment/baseline mode. */
+export function getCatchRampDomain() { return { lo: _catchRampLo, hi: _catchRampHi }; }
 
 /**
  * Set the circle-radius paint property for the stops layer.

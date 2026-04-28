@@ -1,6 +1,6 @@
 # Progress Tracker
 
-*Last updated: 2026-04-28 (docs: README rewritten to reflect current web app state)*
+Last updated: 2026-04-28 (fix: UI polish + Frederiksberg parks pipeline + tooltip P+G mini-panel)
 
 > This project follows the reorientation decisions documented in
 > [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).
@@ -62,6 +62,15 @@ Ordered working list. Delete items when done.
 
 ~~16. **Task 7: stop-detail row responds to active demographic group**~~ ✅ DONE — Stop-detail row (`#pg-stop-row`) now uses group-specific population field (`pop_ch_reach_mid` / `pop_wa_reach_mid` / `pop_el_reach_mid`) instead of summing all three groups' low–high ranges. Green time uses group-specific field (`green_time_children` / `green_time_working_age` / `green_time_elderly`) or population-weighted average for aggregate mode. Display format changed from `fmtK()` range to `toLocaleString("en-DK")` integer. Implemented in scroll.js lines 352–408.
 
+~~17. **UI polish + Frederiksberg parks + tooltip P+G mini-panel**~~ ✅ DONE — Six changes in one session:
+
+- **Burger icon collapse**: restructured `#tool-panel-collapse` as an in-flow button inside `#tool-panel-header`; shows `‹` chevron when expanded, `☰` when collapsed (CSS-only toggle via `.icon-collapse-open` / `.icon-collapse-closed`). Was previously clipped by `overflow: hidden`.
+- **Stop size visibility**: `#stop-size-section` now hidden when Bus Stops overlay is toggled off; shown when on. Wired to `#toggle-stops` change handler in scroll.js.
+- **Water bodies in light blue**: `parks-fill` and `parks-line` layers use a MapLibre `match` expression on `park_type` — `"Vandflader"` → `#b3d4f5` / `#5a9fd4` (blue); all other park types remain green.
+- **Scatter/distribution in Catchment mode**: exported `getCatchRampDomain()` from map.js; `scatter.js` now normalises catchment scores using the catchment domain (not health score domain) when in baseline mode. `updateScatterMode()` now also redraws scatter dots (was missing).
+- **Tooltip P+G mini-panel**: segment hover and stop click popups now share a unified layout via `_buildPopupHeader()` + `_buildMiniPG()`. Stop tooltips show per-group catchment population with `± confidence band`; segment tooltips show per-group health scores. Single score line at top (`modeName · value`), no duplicate labels.
+- **Frederiksberg parks pipeline**: `process_greenspaces.py` now supplements the KK park register with 23 Frederiksberg polygons from `kk_park_groent_omr_oversigtskort.gpkg` (within 1 km buffer). Total parks: 86 → 109. Scoring (`score_bus_routes.py`) and web exports re-run; `green_pct_catchment` updated. P+G area bars now show plain census count (no `±`); stop-specific row shows `± halfRange` from low/high interpolation scenarios.
+
 ---
 
 ## Phases Ahead
@@ -69,22 +78,26 @@ Ordered working list. Delete items when done.
 Prune as phases complete.
 
 ### Phase 3a — Bus pipeline loose ends
+
 - Re-export `norrebro_bus_segments_scored.gpkg` to `data/integrated/` once edge-artifact decision is confirmed
 - Extend health scores to low/high population scenarios
 - Green Paths pipeline (feeds MVP block point 7 above)
 
 ### Phase 3b — Rail *(blocked on data)*
+
 - Find accurate entrance geometries (evaluate Rejseplanen, DSB open data, OSM — GTFS centroids are not entrance-level accurate)
 - Once data confirmed: CitySeer scoring, B(d) Baseline + Contextual modes, export `data/web/norrebro_rail_stops_scored.geojson`
 
 ### Phase 3c — Cycling *(methodology TBD — placeholder)*
 
 ### Phase 3d — Green Spaces tab
+
 - For each 20m segment midpoint: compute network distance to nearest park polygon + nearest playground (`norrebro_greenspaces.gpkg`)
 - Score = B(d) × population per segment, Baseline + Contextual modes
 - Export `data/web/norrebro_greenspace_access.geojson` for Green Spaces tab narrative
 
 ### Phase 5 — Scrollytelling remaining
+
 - Map transitions: `showCatchmentRing`, `showBenefitCurves` (currently stubs)
 - Wire scenario rail to low/high score columns once computed
 - UX items:
@@ -95,11 +108,13 @@ Prune as phases complete.
   - Map tooltip redesign: wide table with population labels as column headers, scores as a single row
 
 ### Phase 6 — Interactive tool
+
 - Benefit curve parameter sliders (peak distance, decay steepness) — map updates reactively
 - Headline walking-minutes metric panel (total daily walking-minutes for current stop configuration)
 - Post-MVP: "drop a hypothetical stop" marginal benefit interaction (requires pre-computed lookup grid or backend)
 
 ### Phase 7 — Hardening
+
 - Performance optimisation (tile loading, render performance)
 - Mobile responsiveness
 - Accessibility (WCAG AA)

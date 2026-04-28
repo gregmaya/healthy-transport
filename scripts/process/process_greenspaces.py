@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 from shapely import box
 
 # Add project root to path for config imports
@@ -118,7 +119,35 @@ def main():
     for val, count in parks["park_type"].value_counts().items():
         logger.info("  %s: %d", val, count)
 
+    # --- Supplement: Frederiksberg municipality parks ---
+    # kk_parkregister covers Copenhagen only; kk_park_groent_omr_oversigtskort
+    # includes all municipalities. Add Frederiksberg polygons within the buffer.
+    logger.info("-" * 60)
+    logger.info("SUPPLEMENT: Frederiksberg parks from overview layer")
+    logger.info("-" * 60)
+
+    overview_path = GREENSPACES_RAW_DIR / "kk_park_groent_omr_oversigtskort.gpkg"
+    overview = gpd.read_file(overview_path, mask=bbox)
+    frb = overview[overview["kommune"] == "Frederiksberg"]
+    frb = frb[frb.intersects(buffered)].copy()
+    logger.info("Found %d Frederiksberg park polygons within buffer", len(frb))
+
+    if len(frb) > 0:
+        frb = frb[["geometry"]].copy()
+        frb["park_type"] = "Frederiksberg"
+        frb["park_name"] = None
+        frb["area_m2"] = frb.geometry.area.round(1)
+        # Fill all remaining schema columns with NaN so concat aligns
+        for col in parks.columns:
+            if col not in frb.columns:
+                frb[col] = None
+        frb = frb[parks.columns]  # align column order
+        parks = pd.concat([parks, frb], ignore_index=True)
+        logger.info("Total after merge: %d park features", len(parks))
+
     GREENSPACES_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    if GREENSPACES_OUTPUT.exists():
+        GREENSPACES_OUTPUT.unlink()
     parks.to_file(GREENSPACES_OUTPUT, layer="parks", driver="GPKG")
     logger.info("Saved layer 'parks': %d features", len(parks))
 

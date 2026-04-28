@@ -56,10 +56,22 @@
 
     <!-- Left control panel — hidden until "Explore" button clicked -->
     <div id="tool-panel" class="hidden">
-      <button id="tool-panel-collapse" aria-label="Collapse panel">
-        <span class="collapse-arrow">‹</span>
-        <span class="collapse-label">Hide</span>
-      </button>
+      <div id="tool-panel-header">
+        <button id="tool-panel-collapse" aria-label="Toggle panel">
+          <!-- Shown when expanded: collapse arrow ‹ -->
+          <svg class="icon-collapse-open" width="10" height="14" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M7 2L3 7L7 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Shown when collapsed: hamburger ☰ -->
+          <svg class="icon-collapse-closed" width="14" height="12" viewBox="0 0 14 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect y="0" width="14" height="2" rx="1" fill="currentColor"/>
+            <rect y="5" width="14" height="2" rx="1" fill="currentColor"/>
+            <rect y="10" width="14" height="2" rx="1" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="tool-panel-body">
 
       <!-- ── DEMOGRAPHIC GROUP ───────────────────────────────────────────── -->
       <div class="ctrl-section" id="group-selector-section">
@@ -138,7 +150,7 @@
       </div>
 
       <!-- ── STOP SIZE ──────────────────────────────────────────────────────── -->
-      <div class="ctrl-section">
+      <div class="ctrl-section" id="stop-size-section">
         <div class="ctrl-section-header">
           <span class="ctrl-label">Stop size</span>
         </div>
@@ -153,6 +165,7 @@
         </label>
       </div>
 
+      </div><!-- #tool-panel-body -->
     </div><!-- #tool-panel -->
 
     <!-- Score legend -->
