@@ -306,7 +306,7 @@ export function initToolPanel() {
     const avg  = (col) => internal.length ? sum(col) / internal.length : 0;
     const fmtK = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n));
     const fmtPct = (n) => `${(n * 100).toFixed(0)}%`;
-    const fmtMin = (n) => `${n.toFixed(1)} min`;
+    const fmtMin = (n) => { const m = Math.floor(n); const s = Math.round((n - m) * 60); return `${m}:${String(s).padStart(2, "0")}'`; };
 
     // ── Headline row (district or neighbourhood) ──────────────────────────────
     const source = nbName && NEIGHBOURHOOD_POP[nbName] ? "nb" : "district";
@@ -411,10 +411,10 @@ export function initToolPanel() {
     const districtTot = DISTRICT_POP.total;
     const nbPop = source === "nb" && NEIGHBOURHOOD_POP[nbName] ? NEIGHBOURHOOD_POP[nbName] : null;
 
-    for (const [suffix, field, waField, lowField, highField] of [
-      ["children",    "children",    "green_time_children",    "pop_ch_reach_low",  "pop_ch_reach_high"],
-      ["working-age", "working_age", "green_time_working_age", "pop_wa_reach_low",  "pop_wa_reach_high"],
-      ["elderly",     "elderly",     "green_time_elderly",     "pop_el_reach_low",  "pop_el_reach_high"],
+    for (const [suffix, field, waField, lowField, highField, midField] of [
+      ["children",    "children",    "green_time_children",    "pop_ch_reach_low",  "pop_ch_reach_high",  "pop_ch_reach_mid"],
+      ["working-age", "working_age", "green_time_working_age", "pop_wa_reach_low",  "pop_wa_reach_high",  "pop_wa_reach_mid"],
+      ["elderly",     "elderly",     "green_time_elderly",     "pop_el_reach_low",  "pop_el_reach_high",  "pop_el_reach_mid"],
     ]) {
       const srcPop   = nbPop ?? DISTRICT_POP;
       const srcTotal = srcPop.total;
@@ -425,17 +425,18 @@ export function initToolPanel() {
 
       const avgLow  = avg(lowField);
       const avgHigh = avg(highField);
-      const uncPct  = avgLow > 0 ? Math.round(((avgHigh - avgLow) / (2 * ((avgLow + avgHigh) / 2))) * 100) : 0;
+      const avgMid  = avg(midField);
+      const halfRange = Math.round((avgHigh - avgLow) / 2);
 
       const barEl = document.getElementById(`pgbar-${suffix}`);
       if (barEl) barEl.style.width = `${share}%`;
       const pctEl = document.getElementById(`pg-pct-${suffix}`);
       if (pctEl) pctEl.textContent = `${share}%`;
-      const uncEl = document.getElementById(`pg-unc-${suffix}`);
-      if (uncEl) uncEl.textContent = uncPct > 0 ? `± ${uncPct}%` : "";
 
       const rawEl = document.getElementById(`pg-raw-${suffix}`);
-      if (rawEl) rawEl.textContent = rawCount.toLocaleString("en-DK");
+      if (rawEl) rawEl.textContent = halfRange > 0
+        ? `${Math.round(avgMid).toLocaleString("en-DK")} ± ${halfRange.toLocaleString("en-DK")}`
+        : Math.round(avgMid).toLocaleString("en-DK");
 
       const markerEl = document.getElementById(`pg-dist-marker-${suffix}`);
       if (markerEl) {

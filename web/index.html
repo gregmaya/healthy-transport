@@ -221,6 +221,12 @@
         <p>Population figures show residents reachable within each group's maximum walk time on the pedestrian network (working-age: 10 min / 840m; elderly: 8 min / 432m; children: 7 min / 420m). The range (low–high) reflects uncertainty in the population model. Green time shows average minutes of that walk spent through park space.</p>
       </div>
 
+      <!-- Column headers -->
+      <div class="pg-groups-header">
+        <div class="pg-col-people pg-col-header">Population</div>
+        <div class="pg-col-green pg-col-header">Time in Green</div>
+      </div>
+
       <!-- Fixed row: district / neighbourhood headline -->
       <div class="pg-row pg-row--headline" id="pg-headline-row">
         <div class="pg-col-people">
@@ -249,10 +255,6 @@
       </div>
 
       <!-- Per-group rows -->
-      <div class="pg-groups-header">
-        <div class="pg-col-people pg-col-header">Population</div>
-        <div class="pg-col-green pg-col-header">Time in Green</div>
-      </div>
       <div class="pg-groups">
         <div class="pg-group-row" id="pg-group-children">
           <div class="pg-col-people">
@@ -263,7 +265,6 @@
                 <div class="pg-group-district-marker hidden" id="pg-dist-marker-children"></div>
               </div>
               <span class="pg-group-pct" id="pg-pct-children">13%</span>
-              <span class="pg-group-unc" id="pg-unc-children"></span>
             </div>
             <div class="pg-group-raw" id="pg-raw-children"></div>
           </div>
@@ -282,7 +283,6 @@
                 <div class="pg-group-district-marker hidden" id="pg-dist-marker-working-age"></div>
               </div>
               <span class="pg-group-pct" id="pg-pct-working-age">78%</span>
-              <span class="pg-group-unc" id="pg-unc-working-age"></span>
             </div>
             <div class="pg-group-raw" id="pg-raw-working-age"></div>
           </div>
@@ -301,7 +301,6 @@
                 <div class="pg-group-district-marker hidden" id="pg-dist-marker-elderly"></div>
               </div>
               <span class="pg-group-pct" id="pg-pct-elderly">8%</span>
-              <span class="pg-group-unc" id="pg-unc-elderly"></span>
             </div>
             <div class="pg-group-raw" id="pg-raw-elderly"></div>
           </div>
