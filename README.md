@@ -22,6 +22,14 @@ A scrollytelling web tool with four analysis tracks (Bus Stops, Rail, Cycling, G
 
 **Rail, Cycling, Green Spaces tabs:** Placeholder structure implemented; scoring pipelines pending.
 
+## Design rationale
+
+**Segments, not addresses** — the intervention space for planners is the public realm. Scoring 20m bus-route segments answers "where should the stop go?"; scoring building footprints would answer "who lives near it?" — a different question entirely. A coloured street network is immediately legible and actionable to a transport planner in a way that a ranked address list is not. Address point scores are an intermediate calculation that feeds the segment score, not the final output.
+
+**A range, not a point** — different demographic groups have genuinely different dose-response relationships with walking distance. Elderly residents reach zero benefit at roughly 700m; working-age adults extend to ~1,200m. The health model produces a family of curves (one per group), so the output is a band of optimal stop locations, not a single optimum. This is more honest and more useful as a planning input: it shifts the question from "where is the best stop?" to "where is the zone where the most people benefit the most?"
+
+**Rail: entrances, not segments** — unlike bus (where any point along the route is a candidate), a rail station's location is effectively fixed. The relevant planning question is how well each existing entrance serves the surrounding population. The rail tab therefore scores one point per physical station, not candidates along rail lines.
+
 ## People + Green panel
 
 Right panel shows population and green-space access metrics for the selected area:

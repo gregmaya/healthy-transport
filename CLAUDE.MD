@@ -6,8 +6,6 @@ Multi-outcome urban health analysis for Nørrebro, Copenhagen. Four parallel ana
 
 Approach all work in this project as an excellent geospatial data scientist with broad urban and transport knowledge. Apply GIS best practices rigorously (topology, CRS, spatial join strategy, network analysis). Bring transport planning and public health domain intuition to data and design decisions. If a proposed change deviates from established GIS practice or the project's strategic orientation documented here, question it explicitly before proceeding.
 
-> **Before making any structural changes to the pipeline or output layers, read [`docs/archive/REORIENTATION_BRIEF.md`](docs/archive/REORIENTATION_BRIEF.md).**
-
 > **Before every `git commit`**: update both `PROGRESS.md` and `CLAUDE.MD` to reflect the current project state. A `.git/hooks/pre-commit` hook enforces this by blocking commits where neither file is staged.
 
 > **`.gitignore` note**: `.claude/settings.local.json` and `.claude/skills/` are gitignored — they contain machine-local Claude Code permissions and personal skill definitions. Do not re-add them.
@@ -268,7 +266,7 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 
 ## Immediate Next Steps
 
-1. **Find accurate rail entrance data** — evaluate Rejseplanen, DSB open data, or OpenStreetMap for metro/train entrance geometries more precise than GTFS stop centroids (blocks Phase 3b).
+1. **Rail entrance data** — use `k101:station_oversigtskort` from the Copenhagen Municipality WFS (same endpoint as parks/cycling, no credentials needed). Download all 133 station points (45 metro, 80 S-station, 8 other) with `objekt_type` + `navn`. Script: `scripts/download/download_rail_stations.py` → `data/raw/transport/rail_stations_kk.geojson`. Process: clip to 2km buffer, assign mode from `objekt_type`, reproject to EPSG:25832. Output: `data/processed/norrebro_rail_stations.gpkg`. Then score with CitySeer (same B(d) pipeline as bus), export `data/web/norrebro_rail_stops_scored.geojson` (blocks Phase 3b).
 2. **Green Spaces tab pipeline** — for each 20m segment midpoint: network distance to nearest park polygon + nearest playground. Score = B(d) × population per segment (blocks Phase 3d).
 3. **UI panel and tooltip polish complete (session 17)** — six changes shipped together: burger icon collapse (chevron when open, ☰ when closed); stop-size section visibility tied to Bus Stops overlay toggle; Vandflader park features rendered in light blue via MapLibre `match` expression; catchment scatter/distribution now uses `getCatchRampDomain()` from map.js and `updateScatterMode()` redraws dots; hover/click tooltips unified to a mini People+Green layout (`_buildPopupHeader` + `_buildMiniPG`) with per-group bars, population counts ± confidence bands (stops only), and green time; Frederiksberg parks supplemented from `kk_park_groent_omr_oversigtskort.gpkg` (86 → 109 parks) and scoring re-run.
 
@@ -277,7 +275,6 @@ Full rationale: `docs/design_decisions.md` § Narrative–Interactive Scatter Co
 ## Reference Documents
 
 - [PROGRESS.md](PROGRESS.md) — project checklist and phase status
-- [docs/REORIENTATION_BRIEF.md](docs/REORIENTATION_BRIEF.md) — strategic decisions and rationale
 - [docs/data_catalogue.md](docs/data_catalogue.md) — per-dataset attributes, record counts, schemas
 - [docs/design_decisions.md](docs/design_decisions.md) — architectural rationale ("why" behind choices)
 - [docs/data_sources.md](docs/data_sources.md) — URLs, APIs, credentials, download scripts

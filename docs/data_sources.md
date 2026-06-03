@@ -32,6 +32,7 @@ URLs, APIs, authentication, and download scripts for all project data.
 | DAR File Download | `https://api.datafordeler.dk/FileDownloads/GetFile` | Entity: `Adressepunkt`, municipality: 0101 | `.env` credentials |
 | Copenhagen Municipality WFS | `https://wfs-kbhkort.kk.dk/k101/ows` | Multiple layers (see below) | None (free) |
 | Rejseplanen GTFS | `https://www.rejseplanen.info/labs/GTFS.zip` | National GTFS feed | None (free) |
+| Copenhagen Municipality WFS — stations | `https://wfs-kbhkort.kk.dk/k101/ows`, layer `k101:station_oversigtskort` | 133 official station points (45 metro, 80 S-station, 8 other) with `objekt_type`, `navn`, `kommune`; EPSG:25832; used for rail entrance scoring | None (free) |
 | StatBank Denmark API | `https://api.statbank.dk/v1/` | Tables: DODA1, FOD207, FOLK1A | None (free) |
 
 **Datafordeleren credentials**: `DATAFORDELEREN_USERNAME` and `DATAFORDELEREN_PASSWORD` in `.env`
