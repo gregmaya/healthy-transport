@@ -10,7 +10,7 @@ rtree>=1.2.0
 networkx>=3.2
 osmnx>=1.9.0
 pandana>=0.7.0
-cityseer>=4.24.0
+cityseer>=4.25.0b19  # beta pin required for dict-based decay_fn / measures (cityseer-api#175)
 
 # Data manipulation
 pandas>=2.1.0

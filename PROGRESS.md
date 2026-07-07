@@ -1,6 +1,6 @@
 # Progress Tracker
 
-Last updated: 2026-05-11
+Last updated: 2026-07-07
 
 ---
 
@@ -91,3 +91,4 @@ Download and process official station geometry from the Copenhagen Municipality 
 - **Score columns**: `score_catchment` · `score_health_working_age` · `score_health_elderly` · `score_health_children` · `score_health_combined`
 - **Walking speeds**: working_age 1.40 m/s · elderly 0.90 m/s · children 1.00 m/s
 - **Meta files**: CLAUDE.md, PROGRESS.md — keep in sync on every commit (enforced by pre-commit hook)
+- **CitySeer version**: `>=4.25.0b19` (beta pin). `scripts/score/score_bus_routes.py` uses the dict-based `decay_fn={label: expr}` API (cityseer-api#175) to evaluate the Gaussian-scored and flat-headcount curves for each demographic group in one shared traversal, plus `measures=["sum"]` to skip unused stats — down from 7 network traversals to 4. Verified numerically equivalent to the pre-upgrade output (score columns match to ~1e-5, within rounding).

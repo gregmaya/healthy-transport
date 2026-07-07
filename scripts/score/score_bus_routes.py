@@ -8,9 +8,12 @@ Key improvements over the notebook:
   - B(t) benefit curves expressed in time (minutes), anchored to the WHO GAPPA (2018)
     10-minute walk recommendation — each demographic group has its own speed and
     time horizon, so the same walk time means different physical distances per group
-  - Uses CitySeer dev branch decay_fn: ONE compute_stats call per group at ONE distance
-    threshold, with the Gaussian curve evaluated internally in Rust. This replaces the
-    old 61-threshold + manual band-integration approach (24 traversals → 4 traversals).
+  - Uses CitySeer's dict-based decay_fn (cityseer>=4.25.0b19, cityseer-api#175): ONE
+    compute_stats call per group evaluates BOTH the Gaussian-scored curve and the flat
+    headcount curve in a single shared traversal (decay_fn={"grav": ..., "flat": ...}),
+    with measures=["sum"] to skip the seven unused stats cityseer would otherwise compute.
+    This replaces the old 61-threshold + manual band-integration approach (24 traversals),
+    then a 7-traversal per-decay-per-group approach, now down to 4 traversals total.
   - Outputs scored pedestrian network segments to WEB_SEGMENTS_GEOJSON, which is
     then consumed by scripts/export/export_bus_route_segments.py for GTFS geometry
     remapping and stop enrichment
@@ -293,67 +296,88 @@ def main() -> None:
     # ==========================================================================
     # 5. Compute weighted accessibility statistics using decay_fn
     #
-    # Traversal plan (7 passes total):
-    #   A  Gaussian  1.40 m/s  10 min  entrances   pop_working_age (scored)
-    #   B  Gaussian  0.90 m/s   8 min  entrances   pop_elderly (scored)
-    #   C  Gaussian  1.00 m/s   7 min  entrances   pop_children (scored)
-    #   D  exp(-4p)  1.40 m/s  10 min  net nodes   edge_length_m + green_length_m (bundled)
-    #   E  flat      1.40 m/s  10 min  entrances   pop_working_age low/mid/high (headcount)
-    #   F  flat      0.90 m/s   8 min  entrances   pop_elderly     low/mid/high (headcount)
-    #   G  flat      1.00 m/s   7 min  entrances   pop_children    low/mid/high (headcount)
+    # Traversal plan (4 passes total):
+    #   A  {grav,flat}  1.40 m/s  10 min  entrances   pop_working_age scored + low/mid/high headcount
+    #   B  {grav,flat}  0.90 m/s   8 min  entrances   pop_elderly     scored + low/mid/high headcount
+    #   C  {grav,flat}  1.00 m/s   7 min  entrances   pop_children    scored + low/mid/high headcount
+    #   D  exp(-4p)     1.40 m/s  10 min  net nodes   edge_length_m + green_length_m (bundled)
     #
-    # Multi-column bundling: passes D, E, F, G each compute multiple columns in
-    # one network traversal (stats_column_labels accepts a list).
+    # Passes A-C use cityseer's dict-based decay_fn (cityseer>=4.25.0b19, cityseer-api#175):
+    # the Gaussian-scored curve ("grav") and the flat headcount curve ("flat") are evaluated
+    # in ONE shared network traversal per group, since both need identical speed/minutes/data —
+    # this collapsed the previous 7-pass plan (a separate Gaussian pass and a separate flat
+    # pass per group) down to 4. measures=["sum"] is passed on every call below since the
+    # script only ever reads the summed value; without it cityseer computes and returns seven
+    # additional unused stats (mean, count, var, median, mad, max, min) per column/decay pair,
+    # including a relatively costly weighted median/MAD sort.
     # ==========================================================================
 
     run_config = [
-        # (label, data_col,          group key)
-        ("working_age", "pop_working_age", "working_age"),
-        ("elderly",     "pop_elderly",     "elderly"),
-        ("children",    "pop_children",    "children"),
+        # (label, out_prefix, data_col,          group key)
+        ("working_age", "pop_wa", "pop_working_age", "working_age"),
+        ("elderly",     "pop_el", "pop_elderly",     "elderly"),
+        ("children",    "pop_ch", "pop_children",    "children"),
         # catchment is handled separately below (different data_gdf and decay_fn)
     ]
 
-    for label, data_col, group in run_config:
+    for label, out_prefix, data_col, group in run_config:
         speed     = SCORING_WALKING_SPEEDS[group]
         max_min   = SCORING_WALK_MINUTES[group]
         peak_min  = SCORING_DECAY_PARAMS[group]["peak_min"]
         sigma_min = SCORING_DECAY_PARAMS[group]["sigma_min"]
+        dist_m    = int(round(max_min * 60 * speed))
 
-        decay_expr = cityseer_decay.gaussian(
-            peak=peak_min,
-            cutoff=max_min,
-            std=sigma_min,
-        )
+        decay_fns = {
+            "grav": cityseer_decay.gaussian(peak=peak_min, cutoff=max_min, std=sigma_min),
+            "flat": cityseer_decay.flat(),
+        }
+        cols_in = [data_col] + [f"{data_col}_{s}" for s in ("low", "mid", "high")]
+
         log.info(
-            "compute_stats [%s]  speed=%.2f m/s  max=%d min  peak=%.1f min  decay_fn=%s",
-            label, speed, max_min, peak_min, decay_expr,
+            "compute_stats [%s]  speed=%.2f m/s  max=%d min  peak=%.1f min  decay_fn=%s  cols=%s",
+            label, speed, max_min, peak_min, decay_fns, cols_in,
         )
 
         nodes_gdf, _ = layers.compute_stats(
             data_gdf=entrances,
-            stats_column_labels=[data_col],
+            stats_column_labels=cols_in,
             nodes_gdf=nodes_gdf,
             network_structure=network_structure,
             minutes=[max_min],
             speed_m_s=speed,
             data_id_col="_data_id",
-            decay_fn=decay_expr,
+            decay_fn=decay_fns,
+            measures=["sum"],
         )
 
-        # Derive the output column name (distance in metres, rounded)
-        dist_m = int(round(max_min * 60 * speed))
-        raw_col = f"cc_{data_col}_sum_{dist_m}"
+        # Scored (Gaussian) column → stable internal name
+        raw_col = f"cc_{data_col}_sum_grav_{dist_m}"
         if raw_col not in nodes_gdf.columns:
-            # Inspect actual columns added to find the correct name
-            new_cols = [c for c in nodes_gdf.columns if data_col in c and "_sum_" in c]
-            log.warning("Expected column %s not found. Found: %s", raw_col, new_cols)
-            raw_col = new_cols[0] if new_cols else None
-
+            found = [c for c in nodes_gdf.columns if c.startswith(f"cc_{data_col}_sum_grav_")]
+            log.warning("Expected column %s not found. Found: %s", raw_col, found)
+            raw_col = found[0] if found else None
         if raw_col:
-            # Rename to a stable internal name to avoid collision across group calls
             nodes_gdf[f"_raw_{label}"] = nodes_gdf[raw_col]
-            log.info("  raw column: %s → _raw_%s", raw_col, label)
+            log.info("  %s → _raw_%s", raw_col, label)
+
+        # Headcount (flat) columns → stable internal names
+        for s in ("low", "mid", "high"):
+            raw_col = f"cc_{data_col}_{s}_sum_flat_{dist_m}"
+            out_col = f"{out_prefix}_reach_{s}"
+            if raw_col not in nodes_gdf.columns:
+                found = [c for c in nodes_gdf.columns if c.startswith(f"cc_{data_col}_{s}_sum_flat_")]
+                log.warning("Expected column %s not found. Found: %s", raw_col, found)
+                raw_col = found[0] if found else None
+            if raw_col:
+                nodes_gdf[out_col] = nodes_gdf[raw_col].round(0)
+                log.info("  %s → %s", raw_col, out_col)
+
+        # Drop the full cross-product (grav×low/mid/high, flat×scored included) now that
+        # the four useful values have been copied to stable internal names above.
+        leftover = [c for c in nodes_gdf.columns if c.startswith(f"cc_{data_col}")]
+        if leftover:
+            nodes_gdf.drop(columns=leftover, inplace=True, errors="ignore")
+            log.info("  dropped cross-product columns: %s", leftover)
 
     # ==========================================================================
     # 5b. Catchment + Green Paths: bundled into one pass (same data_gdf, speed,
@@ -382,6 +406,7 @@ def main() -> None:
         speed_m_s=catchment_speed,
         data_id_col="_node_id",
         decay_fn=CATCHMENT_DECAY_FN,
+        measures=["sum"],
     )
 
     for raw_suffix, internal_name in [("edge_length_m", "_raw_catchment"), ("green_length_m", "_raw_green_catchment")]:
@@ -394,63 +419,6 @@ def main() -> None:
             nodes_gdf[internal_name] = nodes_gdf[raw_col]
             nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
             log.info("  %s → %s (dropped original)", raw_col, internal_name)
-
-    # ==========================================================================
-    # 5c. Flat-decay population headcounts (passes E, F, G)
-    #
-    # Step-function decay (decay_fn="1"): every entrance within the group's max
-    # walk time counts equally regardless of distance — no B(d) weighting.
-    # Produces per-group, per-scenario headcounts (low/mid/high) for display
-    # in the interactive panel alongside the scored metrics.
-    #
-    # Each pass bundles three scenarios (low/mid/high) in one network traversal
-    # via stats_column_labels — one traversal per group, three output columns.
-    #
-    # Output columns on segments:
-    #   pop_wa_reach_{low,mid,high}  — working-age within 10 min (840m @ 1.40 m/s)
-    #   pop_el_reach_{low,mid,high}  — elderly within 8 min     (432m @ 0.90 m/s)
-    #   pop_ch_reach_{low,mid,high}  — children within 7 min    (420m @ 1.00 m/s)
-    # ==========================================================================
-
-    flat_run_config = [
-        # (prefix,    group key,    input col prefix)
-        ("pop_wa", "working_age", "pop_working_age"),
-        ("pop_el", "elderly",     "pop_elderly"),
-        ("pop_ch", "children",    "pop_children"),
-    ]
-
-    for out_prefix, group, in_prefix in flat_run_config:
-        speed   = SCORING_WALKING_SPEEDS[group]
-        max_min = SCORING_WALK_MINUTES[group]
-        dist_m  = int(round(max_min * 60 * speed))
-        cols_in = [f"{in_prefix}_{s}" for s in ("low", "mid", "high")]
-
-        log.info(
-            "compute_stats [%s flat headcount]  speed=%.2f m/s  max=%d min  dist=%dm  cols=%s",
-            out_prefix, speed, max_min, dist_m, cols_in,
-        )
-        nodes_gdf, _ = layers.compute_stats(
-            data_gdf=entrances,
-            stats_column_labels=cols_in,
-            nodes_gdf=nodes_gdf,
-            network_structure=network_structure,
-            minutes=[max_min],
-            speed_m_s=speed,
-            data_id_col="_data_id",
-            decay_fn=cityseer_decay.flat(),
-        )
-
-        for s in ("low", "mid", "high"):
-            raw_col = f"cc_{in_prefix}_{s}_sum_{dist_m}"
-            out_col = f"{out_prefix}_reach_{s}"
-            if raw_col not in nodes_gdf.columns:
-                found = [c for c in nodes_gdf.columns if f"{in_prefix}_{s}" in c and "_sum_" in c]
-                log.warning("Expected column %s not found. Found: %s", raw_col, found)
-                raw_col = found[0] if found else None
-            if raw_col:
-                nodes_gdf[out_col] = nodes_gdf[raw_col].round(0)
-                nodes_gdf.drop(columns=[raw_col], inplace=True, errors="ignore")
-                log.info("  %s → %s", raw_col, out_col)
 
     # ==========================================================================
     # 6. Normalise scores globally across live segments

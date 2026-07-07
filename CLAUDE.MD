@@ -134,6 +134,8 @@ nodes_gdf, edges_gdf, network_structure = io.network_structure_from_nx(G)
 
 - **CitySeer** is used for both network setup and the segment scoring loop — computing shortest-path distances from each segment midpoint to all address points within 1,500m. CitySeer is chosen over NetworkX for its performance and its native support for urban network analysis.
 
+- **Pin: `cityseer>=4.25.0b19`** (beta — required for dict-based `decay_fn`, shipped in response to [cityseer-api#175](https://github.com/benchmark-urbanism/cityseer-api/issues/175)). `compute_stats` (and `compute_accessibilities` / `compute_mixed_uses`) accepts `decay_fn` as either a single string/`None` (unchanged) or a `dict[str, str]` of `{label: expression}` — every labelled decay is evaluated in **one shared network traversal**, with output columns as the cross product `cc_{col}_{measure}_{decay_label}_{distance}`. Pair this with the new `measures=[...]` argument (subset of `sum, mean, count, var, median, mad, max, min`; default computes all eight) to avoid paying for stats the pipeline never reads. `scripts/score/score_bus_routes.py` uses this to compute the Gaussian-scored curve and the flat-decay headcount curve for each demographic group (working-age/elderly/children) in a single traversal instead of two, cutting the pipeline from 7 network traversals to 4.
+
 The existing osmnx GraphML + GeoPackage remain valid for QGIS visualisation only.
 
 ---
